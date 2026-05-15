@@ -15,6 +15,12 @@ Usar siempre estos valores al configurar el foróptero:
 | R   | +0.75  | -1.75    | 60     |
 | L   | +2.75  | 0.00     | 0      |
 
+## Confianza (`confianza` en el turno)
+
+- Es la **confianza del agente de voz en la transcripción/captura** de lo que dijo el paciente (calidad del audio y del reconocimiento), **no** la confianza del paciente en su respuesta clínica.
+- **`confianza` &lt; 0.7**: no tomes decisiones clínicas definitivas con ese texto; **repreguntá sin mover dispositivos**.
+- **`confianza` ≥ 0.7**: el contenido de `respuestaPaciente` es fiable para clasificar correcta / incorrecta / no_ve / ambigua.
+
 ## Inicio del test por ojo
 
 1. logMAR inicial: **0.3**
@@ -24,18 +30,21 @@ Usar siempre estos valores al configurar el foróptero:
 
 ## Escala logMAR permitida
 
-Valores válidos (de más grande a más chico): **0.3, 0.2, 0.1, 0.0**
+Valores válidos (de letras más grandes a más chicas): **0.3, 0.2, 0.1, 0.0**
 
-- **Correcta** (identificó la letra mostrada): bajar un paso (0.3→0.2→0.1→0.0) salvo que ya estés confirmando en el mismo logMAR.
-- **Incorrecta** (otra letra): tratar como no acierto en este nivel.
-- **no_ve / borroso**: subir un paso o volver al último logMAR donde respondió correctamente.
-- **no_se / ambiguo / confianza &lt; 0.7**: repreguntar sin mover dispositivos.
+- **Correcta** (identificó la letra mostrada y coincide con la letra en TV): bajar un paso (0.3→0.2→0.1→0.0), salvo que ya estés en la fase de **doble confirmación** en el mismo logMAR (ver abajo).
+- **Incorrecta** (otra letra Sloan distinta de la mostrada o respuesta inequívoca de letra equivocada): con **`confianza` ≥ 0.7**, **subí siempre un paso** en logMAR (0.0→0.1→0.2→0.3). Rotá a una letra Sloan no usada en ese ojo para el nuevo intento en ese nivel. **No** repreguntes en el mismo logMAR y la misma letra como sustituto de subir.
+- **no_ve / borroso / no_se** (no distingue, ve borroso, “no sé qué letra es”, “no la veo”): con **`confianza` ≥ 0.7**, **subí un paso** en logMAR o volvé al último logMAR donde respondió correctamente (elegí la variante que mejor encaje con el historial del ojo); luego rotá letra si corresponde.
+- **Tope 0.3**: si ya mostrás **0.3** y debés “subir” por fallo o no_ve, no hay paso más grande en esta POC: **permanecé en 0.3**, rotá letra si queda alternativa Sloan, y pedí otra respuesta; si no aplica más progreso, podés registrar el umbral en ese logMAR según reglas de cierre.
+
+- **Ambigua** (con **`confianza` ≥ 0.7**, la frase no permite saber si dio letra, no_ve o negación clara): **repreguntá sin mover dispositivos**.
 
 ## Doble confirmación
 
-- Cuando el paciente acierta en un logMAR, incrementar `confirmaciones`.
-- Si acierta **dos veces seguidas** en el **mismo** logMAR (puede ser otra letra Sloan), registrar `logmarFinal` y `letraFinal` para ese ojo y pasar al siguiente ojo (o finalizar si era L).
-- Tras un acierto que baja logMAR, resetear `confirmaciones` a 1 en el nuevo nivel.
+- Cuando el paciente **acierta** en un logMAR, incrementá `confirmaciones`.
+- Si acierta **dos veces seguidas** en el **mismo** logMAR (puede ser otra letra Sloan en la segunda vez), registrá `logmarFinal` y `letraFinal` para ese ojo y pasá al siguiente ojo (o finalizá si era L).
+- Tras un acierto que **baja** logMAR, reseteá `confirmaciones` a **1** en el nuevo nivel.
+- Tras **subir** logMAR por error, no_ve, borroso o **no_se**, reseteá `confirmaciones` a **0** (o **1** si contás el primer intento en el nuevo nivel como primer “intento serio”; lo importante es no arrastrar el contador del nivel anterior).
 
 ## Letras Sloan
 
