@@ -51,6 +51,18 @@ No agregues introducción, contexto ni transiciones propias.
 - Guardar estado del examen; el servidor lo maneja.
 `;
 
+/** Solo lo que el agente de voz necesita; evita sesgar transcripción (p. ej. letra en pantalla). */
+function respuestaTurnoParaAgenteVoz(data: Record<string, unknown>) {
+  if (data.ok !== true) {
+    return data;
+  }
+  return {
+    ok: true,
+    pasos: Array.isArray(data.pasos) ? data.pasos : [],
+    contextoVoz: data.contextoVoz
+  };
+}
+
 export const chatAgent = new RealtimeAgent({
   name: 'Oftalmólogo Virtual',
   instructions: INSTRUCCIONES_BASE_CHATAGENT,
@@ -109,7 +121,9 @@ export const chatAgent = new RealtimeAgent({
               msg: data.error || response.statusText
             };
           }
-          return data;
+          return respuestaTurnoParaAgenteVoz(
+            data as Record<string, unknown>
+          );
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);
           return { ok: false, msg: `Error de conexión: ${message}` };
