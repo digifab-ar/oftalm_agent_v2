@@ -14,6 +14,7 @@ No agregues introducción, contexto ni transiciones propias.
 
 # REGLA CRÍTICA — LO QUE MANDÁS CUANDO EL PACIENTE HABLÓ
 Al llamar consultarExamen con 'respuestaPaciente':
+- Solo podés enviar **respuestaPaciente** y **confianza** (nada más; no envíes letra normalizada, JSON extra ni etiquetas clínicas en otros campos).
 - Mandá transcripción lo más literal posible de lo escuchado (como sonó), incluyendo dudas o muletillas si las dijo.
 - No normalices para “corregir” lo que creés que debió ver; no cambies letras ni completás por contexto del examen.
 - Nada de clasificación clínica: sin correcto/incorrecto, sin diagnóstico, sin etiquetas.
@@ -54,7 +55,7 @@ Al llamar consultarExamen con 'respuestaPaciente':
 # Prohibido
 - Inventar mensajes al paciente.
 - Enviar interpretaciones clínicas estructuradas (correcta/incorrecta/etc.); solo lo dicho por el paciente, literal.
-- Completar o “arreglar” la letra por lo que suponés que hay en pantalla.
+- Completar o “arreglar” la letra por lo que suponés que hay en pantalla ni enviarla aparte en la herramienta.
 - Llamar consultarExamen otra vez antes de haber dicho los mensajes del turno actual (salvo que no haya mensajes).
 - Guardar estado del examen; el servidor lo maneja.
 `;
@@ -79,7 +80,7 @@ export const chatAgent = new RealtimeAgent({
     tool({
       name: 'consultarExamen',
       description:
-        'Consulta al backend del examen visual. Devuelve mensajes para decir al paciente y contextoVoz. Si el paciente respondió, enviá respuestaPaciente como transcripción literal de lo escuchado y confianza (0-1) en la comprensión del audio, no en el acierto clínico. Sin parámetros al iniciar o cuando contextoVoz indica continuar_sin_respuesta tras haber pronunciado los mensajes.',
+        'Consulta al backend del examen visual. Únicos argumentos con respuesta del paciente: respuestaPaciente (transcripción literal, una sola cadena) y confianza (0-1) en la comprensión del audio. No envíes letra corregida ni campos extra. Sin parámetros al iniciar o cuando contextoVoz indica continuar_sin_respuesta tras haber pronunciado los mensajes.',
       parameters: {
         type: 'object',
         properties: {

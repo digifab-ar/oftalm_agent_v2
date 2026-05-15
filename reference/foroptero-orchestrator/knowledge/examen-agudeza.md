@@ -19,7 +19,18 @@ Usar siempre estos valores al configurar el foróptero:
 
 - Es la **confianza del agente de voz en la transcripción/captura** de lo que dijo el paciente (calidad del audio y del reconocimiento), **no** la confianza del paciente en su respuesta clínica.
 - **`confianza` &lt; 0.7**: no tomes decisiones clínicas definitivas con ese texto; **repreguntá sin mover dispositivos**.
-- **`confianza` ≥ 0.7**: el contenido de `respuestaPaciente` es fiable para clasificar correcta / incorrecta / no_ve / ambigua.
+- **`confianza` ≥ 0.7**: el texto es **suficientemente fiable** como para intentar extraer letra o intención; aun así, si según **letras-fonetica-es.md** hay **ambigüedad fonética** respecto de `letraActual`, preferí **ambigua + repregunta** antes de marcar **incorrecta**.
+
+## Interpretación de `respuestaPaciente` (prosa y nombres de letra)
+
+El paciente puede contestar en **frase** (“veo una hache”, “estoy seguro que es te”), **nombre de letra** o **una sola letra**. No exijás formato único en el protocolo.
+
+1. Usá **letras-fonetica-es.md** para pasar de palabras a **letra(s) Sloan candidata(s)** (H, O, T, E, C, F, Z, L, P, D).
+2. **Sin candidata** clara (solo muletillas, ruido): **ambigua** → repreguntá sin mover TV ni foróptero.
+3. **Una candidata**, coincide con `letraActual` → **correcta** (aplicar reglas de logMAR y doble confirmación).
+4. **Una candidata**, distinta de `letraActual`, **sin** situación de **par de riesgo** que abra duda razonable → **incorrecta** (ver más abajo).
+5. **Varias candidatas** o **par de riesgo** (ej. “che” con `letraActual` **H** sin señal de **C**, o “ese” entre **E** y **C**) → **ambigua**: repreguntá con mensaje breve (“¿Decís hache o ce?”, “¿es la e o la ce?”). **No** cambies logMAR ni letra hasta aclarar.
+6. Contenido **no_ve / borroso / no sé la letra** (sin afirmar otra letra concreta) → tratá según sección **no_ve / borroso / no_se**, no como incorrecta por letra.
 
 ## Inicio del test por ojo
 
@@ -32,12 +43,14 @@ Usar siempre estos valores al configurar el foróptero:
 
 Valores válidos (de letras más grandes a más chicas): **0.3, 0.2, 0.1, 0.0**
 
-- **Correcta** (identificó la letra mostrada y coincide con la letra en TV): bajar un paso (0.3→0.2→0.1→0.0), salvo que ya estés en la fase de **doble confirmación** en el mismo logMAR (ver abajo).
-- **Incorrecta** (otra letra Sloan distinta de la mostrada o respuesta inequívoca de letra equivocada): con **`confianza` ≥ 0.7**, **subí siempre un paso** en logMAR (0.0→0.1→0.2→0.3). Rotá a una letra Sloan no usada en ese ojo para el nuevo intento en ese nivel. **No** repreguntes en el mismo logMAR y la misma letra como sustituto de subir.
-- **no_ve / borroso / no_se** (no distingue, ve borroso, “no sé qué letra es”, “no la veo”): con **`confianza` ≥ 0.7**, **subí un paso** en logMAR o volvé al último logMAR donde respondió correctamente (elegí la variante que mejor encaje con el historial del ojo); luego rotá letra si corresponde.
-- **Tope 0.3**: si ya mostrás **0.3** y debés “subir” por fallo o no_ve, no hay paso más grande en esta POC: **permanecé en 0.3**, rotá letra si queda alternativa Sloan, y pedí otra respuesta; si no aplica más progreso, podés registrar el umbral en ese logMAR según reglas de cierre.
-
-- **Ambigua** (con **`confianza` ≥ 0.7**, la frase no permite saber si dio letra, no_ve o negación clara): **repreguntá sin mover dispositivos**.
+- **Correcta** (letra identificada sin ambigüedad pendiente y coincide con la mostrada en TV / `letraActual`): bajá un paso (0.3→0.2→0.1→0.0), salvo que ya estés en la fase de **doble confirmación** en el mismo logMAR (ver abajo).
+- **Incorrecta** (una letra Sloan identificada, **distinta** de la mostrada, **sin** ambigüedad fonética pendiente según **letras-fonetica-es.md**): con **`confianza` ≥ 0.7**:
+  - Si el logMAR actual es **mayor que 0.3**: **subí un paso** (letra más grande). Rotá a una Sloan no usada en ese ojo para el intento en ese nivel.
+  - Si ya estás en **0.3** (tope): **no podés** subir más; **permanecé en 0.3**, rotá a otra letra Sloan no usada si hay alternativa, y pedí otra respuesta.
+  - **No** repreguntes en el mismo nivel solo para “ganar” un intento extra cuando correspondía **subir** logMAR y todavía podías hacerlo (logMAR &gt; 0.3).
+- **no_ve / borroso / no_se** (no distingue, ve borroso, “no sé qué letra es”, “no la veo”): con **`confianza` ≥ 0.7`, **subí un paso** en logMAR **si** estás por debajo de 0.3 hacia letras más grandes, o **permanecé en 0.3** y rotá letra; o volvé al último logMAR correcto según historial si encaja mejor. Luego rotá letra si corresponde.
+- **Ambigua** (incluye ambigüedad fonética tras aplicar **letras-fonetica-es.md**): **repreguntá sin mover dispositivos**, aunque `confianza` ≥ 0.7.
+- **Tope 0.3**: cualquier regla que pida “subir” logMAR desde **0.3** implica **quedarse en 0.3** y, si aplica, **rotar letra**.
 
 ## Doble confirmación
 

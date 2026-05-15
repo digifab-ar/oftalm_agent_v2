@@ -130,6 +130,8 @@ function cargarConocimiento() {
     leerMarkdown('prompts/sistema.md'),
     '---\n# examen-agudeza.md\n',
     leerMarkdown('knowledge/examen-agudeza.md'),
+    '---\n# letras-fonetica-es.md\n',
+    leerMarkdown('knowledge/letras-fonetica-es.md'),
     '---\n# foroptero.md\n',
     leerMarkdown('knowledge/foroptero.md'),
     '---\n# tv.md\n',
