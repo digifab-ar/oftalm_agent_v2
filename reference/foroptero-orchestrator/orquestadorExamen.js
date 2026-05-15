@@ -61,6 +61,16 @@ const ORQUESTADOR_SCHEMA = {
                 letraActual: { type: 'string' },
                 ultimoLogmarCorrecto: { type: ['number', 'null'] },
                 confirmaciones: { type: 'number' },
+                aciertosPorLogmar: {
+                  type: 'object',
+                  properties: {
+                    '0.3': { type: 'number' },
+                    '0.2': { type: 'number' },
+                    '0.1': { type: 'number' },
+                    '0.0': { type: 'number' }
+                  },
+                  additionalProperties: false
+                },
                 logmarFinal: { type: ['number', 'null'] },
                 letraFinal: { type: ['string', 'null'] },
                 letrasUsadas: {
@@ -77,6 +87,16 @@ const ORQUESTADOR_SCHEMA = {
                 letraActual: { type: 'string' },
                 ultimoLogmarCorrecto: { type: ['number', 'null'] },
                 confirmaciones: { type: 'number' },
+                aciertosPorLogmar: {
+                  type: 'object',
+                  properties: {
+                    '0.3': { type: 'number' },
+                    '0.2': { type: 'number' },
+                    '0.1': { type: 'number' },
+                    '0.0': { type: 'number' }
+                  },
+                  additionalProperties: false
+                },
                 logmarFinal: { type: ['number', 'null'] },
                 letraFinal: { type: ['string', 'null'] },
                 letrasUsadas: {

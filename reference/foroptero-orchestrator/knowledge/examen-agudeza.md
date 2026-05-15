@@ -27,7 +27,7 @@ El paciente puede contestar en **frase** (“veo una hache”, “estoy seguro q
 
 1. Usá **letras-fonetica-es.md** para pasar de palabras a **letra(s) Sloan candidata(s)** (H, O, T, E, C, F, Z, L, P, D).
 2. **Sin candidata** clara (solo muletillas, ruido): **ambigua** → repreguntá sin mover TV ni foróptero.
-3. **Una candidata**, coincide con `letraActual` → **correcta** (aplicar reglas de logMAR y doble confirmación).
+3. **Una candidata**, coincide con `letraActual` → **correcta** (aplicar reglas de logMAR y **`aciertosPorLogmar`** / doble confirmación).
 4. **Una candidata**, distinta de `letraActual`, **sin** situación de **par de riesgo** que abra duda razonable → **incorrecta** (ver más abajo).
 5. **Varias candidatas** o **par de riesgo** (ej. “che” con `letraActual` **H** sin señal de **C**, o “ese” entre **E** y **C**) → **ambigua**: repreguntá con mensaje breve (“¿Decís hache o ce?”, “¿es la e o la ce?”). **No** cambies logMAR ni letra hasta aclarar.
 6. Contenido **no_ve / borroso / no sé la letra** (sin afirmar otra letra concreta) → tratá según sección **no_ve / borroso / no_se**, no como incorrecta por letra.
@@ -43,7 +43,7 @@ El paciente puede contestar en **frase** (“veo una hache”, “estoy seguro q
 
 Valores válidos (de letras más grandes a más chicas): **0.3, 0.2, 0.1, 0.0**
 
-- **Correcta** (letra identificada sin ambigüedad pendiente y coincide con la mostrada en TV / `letraActual`): bajá un paso (0.3→0.2→0.1→0.0), salvo que ya estés en la fase de **doble confirmación** en el mismo logMAR (ver abajo).
+- **Correcta** (letra identificada sin ambigüedad pendiente y coincide con la mostrada en TV / `letraActual`): primero incrementá **`aciertosPorLogmar`** para ese logMAR y evaluá **cierre de ojo** (ver **Doble confirmación**). Si **no** cerraste el ojo: si `logmarActual > 0.0`, **bajá un paso** (0.3→0.2→0.1→0.0); si `logmarActual == 0.0`, **permanecé en 0.0** y rotá letra hasta el segundo acierto en ese nivel.
 - **Subir logMAR (“un paso” hacia letras más grandes)** en **incorrecta**, **no_ve**, **borroso** y **no_se** (cuando aplique por `confianza` como arriba): usá **solo** la **transición inmediata en la tabla** (**0.0→0.1**, **0.1→0.2**, **0.2→0.3**). El **logMAR inicial 0.3** sirve solo para **empezar** cada ojo: **no** volver a saltar desde **0.0**, **0.1** ni **0.2** directo al **inicio estándar 0.3** cuando el paciente necesita una **subida**; esa subida debe ser **exactamente un paso** hasta eventualmente llegar **solo** mediante **0.2→0.3**.
 - **Incorrecta** (una letra Sloan identificada, **distinta** de la mostrada, **sin** ambigüedad fonética pendiente según **letras-fonetica-es.md**): con **`confianza` ≥ 0.7**:
   - Si el logMAR actual **no es 0.3** (aún hay un paso hacia arriba en la tabla): **subí un paso** (letras más grandes). Rotá a una Sloan no usada en ese ojo para el intento en ese nivel.
@@ -55,10 +55,14 @@ Valores válidos (de letras más grandes a más chicas): **0.3, 0.2, 0.1, 0.0**
 
 ## Doble confirmación
 
-- Cuando el paciente **acierta** en un logMAR, incrementá `confirmaciones`.
-- Si acierta **dos veces seguidas** en el **mismo** logMAR (puede ser otra letra Sloan en la segunda vez), registrá `logmarFinal` y `letraFinal` para ese ojo y pasá al siguiente ojo (o finalizá si era L).
-- Tras un acierto que **baja** logMAR, reseteá `confirmaciones` a **1** en el nuevo nivel.
-- Tras **subir** logMAR por error, no_ve, borroso o **no_se**, reseteá `confirmaciones` a **0** (o **1** si contás el primer intento en el nuevo nivel como primer “intento serio”; lo importante es no arrastrar el contador del nivel anterior).
+- Mantené por ojo **`aciertosPorLogmar`**: claves **`"0.3"`**, **`"0.2"`**, **`"0.1"`**, **`"0.0"`** y valores enteros ≥ 0. Al **iniciar** el test de cada ojo (R o L), poné todas en **0**.
+- Cada **correcta** (coincidencia clara con `letraActual`): sumá **1** a **`aciertosPorLogmar`** del `logmarActual` actual (usá la misma convención de clave que el JSON del estado).
+- **Dos aciertos en el mismo logMAR** significa **dos incrementos** sobre el **mismo** valor de logMAR **acumulados a lo largo del examen de ese ojo**, aunque entre medios el paciente haya **bajado** a una línea más chica y **vuelto a subir** por **incorrecta** o por **no_ve / borroso / no_se**. No exijas que los dos aciertos sean “turnos consecutivos” en el historial sin visitar otro tamaño; el contador por tamaño es la fuente de verdad.
+- Si tras sumar queda **`aciertosPorLogmar[logmarActual] >= 2`**: registrá `logmarFinal` y `letraFinal` para ese ojo y pasá al siguiente ojo (o finalizá si era L). **En ese turno no bajes** a logMAR más chico.
+- Si queda en **1** y `logmarActual > 0.0`: aplicá la regla de la escala y **bajá un paso** con letra Sloan no usada.
+- Si queda en **1** y `logmarActual == 0.0`: **no** podés bajar; rotá letra en **0.0** hasta el siguiente acierto en **0.0** (el contador llegará a 2 y cerrará el ojo).
+- Tras **subir** logMAR por error, **no_ve**, **borroso** o **no_se**, **no reinicies** `aciertosPorLogmar` a cero: los aciertos ya anotados en cada tamaño **siguen contando** (evita volver a **0.0** cuando ya hubo un acierto en **0.1** y un borroso en **0.0**).
+- **`confirmaciones`**: opcional para logs; si la usás, mantenela coherente con el flujo, pero el **cierre del ojo** se define por **`aciertosPorLogmar`** como arriba.
 
 ## Letras Sloan
 

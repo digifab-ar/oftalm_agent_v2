@@ -13,6 +13,7 @@ function ojoAgudezaVacio() {
     letraActual: null,
     ultimoLogmarCorrecto: null,
     confirmaciones: 0,
+    aciertosPorLogmar: { '0.3': 0, '0.2': 0, '0.1': 0, '0.0': 0 },
     logmarFinal: null,
     letraFinal: null,
     letrasUsadas: []
