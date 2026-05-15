@@ -173,14 +173,22 @@ function App() {
     const data = await tokenResponse.json();
     logServerEvent(data, "fetch_session_token_response");
 
-    if (!data.client_secret?.value) {
+    if (data.error) {
+      logClientEvent(data, "error.session_token");
+      console.error("Session token error:", data.error);
+      setSessionStatus("DISCONNECTED");
+      return null;
+    }
+
+    const token = data.value ?? data.client_secret?.value;
+    if (!token) {
       logClientEvent(data, "error.no_ephemeral_key");
       console.error("No ephemeral key provided by the server");
       setSessionStatus("DISCONNECTED");
       return null;
     }
 
-    return data.client_secret.value;
+    return token;
   };
 
   const connectToRealtime = async () => {
@@ -258,7 +266,12 @@ function App() {
     sendEvent({
       type: 'session.update',
       session: {
-        turn_detection: turnDetection,
+        type: 'realtime',
+        audio: {
+          input: {
+            turn_detection: turnDetection,
+          },
+        },
       },
     });
 
