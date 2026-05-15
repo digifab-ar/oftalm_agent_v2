@@ -79,18 +79,19 @@ export const chatAgent = new RealtimeAgent({
         required: [],
         additionalProperties: false
       },
-      execute: async (input: {
-        respuestaPaciente?: string | null;
-        confianza?: number | null;
-      }) => {
+      execute: async (input) => {
+        const args = input as {
+          respuestaPaciente?: string | null;
+          confianza?: number | null;
+        };
         const body: Record<string, unknown> = {};
         if (
-          input.respuestaPaciente != null &&
-          String(input.respuestaPaciente).trim() !== ''
+          args.respuestaPaciente != null &&
+          String(args.respuestaPaciente).trim() !== ''
         ) {
-          body.respuestaPaciente = String(input.respuestaPaciente).trim();
-          if (typeof input.confianza === 'number' && !Number.isNaN(input.confianza)) {
-            body.confianza = input.confianza;
+          body.respuestaPaciente = String(args.respuestaPaciente).trim();
+          if (typeof args.confianza === 'number' && !Number.isNaN(args.confianza)) {
+            body.confianza = args.confianza;
           }
         }
 
