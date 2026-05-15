@@ -139,8 +139,6 @@ Reinicia el examen desde el principio.
 ```
 Valores permitidos para `modo`: `normal`, `testesf`, `testcil`, `testbin`. Si se omite el body o el campo `modo`, equivale a `normal`. Modo inválido → `400`.
 
-Documentación ampliada: [examenprueba.md](./examenprueba.md).
-
 **Response:**
 ```json
 {

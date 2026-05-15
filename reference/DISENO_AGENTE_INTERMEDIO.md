@@ -102,7 +102,7 @@ Frontend (Next.js + OpenAI Realtime)
 ### 2.3 Por qué cambiar
 
 - Mantener protocolo clínico en JS es costoso (~4000 líneas, muchos edge cases).
-- Ya existen markdowns de referencia (`ALGORITMO_REGLAS_TESTS.md`, `DEFINICIONES_EXAMEN_BINOCULAR.md`, etc.) que **no gobiernan** el runtime.
+- El protocolo en runtime lo gobiernan los markdowns en `reference/foroptero-orchestrator/knowledge/`, no el motor legado en JS.
 - La POC busca **flexibilidad** y edición de protocolo vía markdown por el mismo equipo (sin versionado formal ni aprobación previa al deploy).
 
 ---
@@ -733,12 +733,11 @@ Orden sugerido tras estabilizar agudeza:
 
 | Documento | Relación |
 |-----------|----------|
-| `DOCUMENTACION.md` | Sistema actual completo |
-| `reference/ARQUITECTURA_ENDPOINTS.md` | Endpoints HTTP/MQTT actuales |
-| `reference/ALGORITMO_REGLAS_TESTS.md` | Reglas de lentes (futuro) |
-| `reference/foroptero-server/motorExamen.js` | Lógica a reemplazar gradualmente |
-| `src/app/agentConfigs/chatSupervisor/index.ts` | Agente de voz actual |
-| `reference/foroptero-server/testAgent.js` | Base para script de prueba del nuevo API |
+| `reference/foroptero-orchestrator/README.md` | Setup y endpoints del servidor PoC |
+| `reference/ARQUITECTURA_ENDPOINTS.md` | Endpoints HTTP/MQTT del servidor legado |
+| `reference/foroptero-server/motorExamen.js` | Lógica legada (referencia) |
+| `src/app/agentConfigs/chatSupervisor/index.ts` | Agente de voz |
+| `reference/foroptero-orchestrator/testAgent.js` | Prueba HTTP sin voz |
 
 ---
 

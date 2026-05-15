@@ -22,18 +22,7 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
-import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
-import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
-import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
-
-// Map used by connect logic for scenarios defined via the SDK.
-const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
-  simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
-  chatSupervisor: chatSupervisorScenario,
-};
 
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
@@ -195,42 +184,38 @@ function App() {
   };
 
   const connectToRealtime = async () => {
-    const agentSetKey = searchParams.get("agentConfig") || "default";
-    if (sdkScenarioMap[agentSetKey]) {
-      if (sessionStatus !== "DISCONNECTED") return;
-      setSessionStatus("CONNECTING");
+    const agentSetKey = searchParams.get("agentConfig") || defaultAgentSetKey;
+    const agents = allAgentSets[agentSetKey];
+    if (!agents) return;
 
-      try {
-        const EPHEMERAL_KEY = await fetchEphemeralKey();
-        if (!EPHEMERAL_KEY) return;
+    if (sessionStatus !== "DISCONNECTED") return;
+    setSessionStatus("CONNECTING");
 
-        // Ensure the selectedAgentName is first so that it becomes the root
-        const reorderedAgents = [...sdkScenarioMap[agentSetKey]];
-        const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
-        if (idx > 0) {
-          const [agent] = reorderedAgents.splice(idx, 1);
-          reorderedAgents.unshift(agent);
-        }
+    try {
+      const EPHEMERAL_KEY = await fetchEphemeralKey();
+      if (!EPHEMERAL_KEY) return;
 
-        const companyName = agentSetKey === 'customerServiceRetail'
-          ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
-        const guardrail = createModerationGuardrail(companyName);
-
-        await connect({
-          getEphemeralKey: async () => EPHEMERAL_KEY,
-          initialAgents: reorderedAgents,
-          audioElement: sdkAudioElement,
-          outputGuardrails: [guardrail],
-          extraContext: {
-            addTranscriptBreadcrumb,
-          },
-        });
-      } catch (err) {
-        console.error("Error connecting via SDK:", err);
-        setSessionStatus("DISCONNECTED");
+      const reorderedAgents = [...agents];
+      const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
+      if (idx > 0) {
+        const [agent] = reorderedAgents.splice(idx, 1);
+        reorderedAgents.unshift(agent);
       }
-      return;
+
+      const guardrail = createModerationGuardrail(chatSupervisorCompanyName);
+
+      await connect({
+        getEphemeralKey: async () => EPHEMERAL_KEY,
+        initialAgents: reorderedAgents,
+        audioElement: sdkAudioElement,
+        outputGuardrails: [guardrail],
+        extraContext: {
+          addTranscriptBreadcrumb,
+        },
+      });
+    } catch (err) {
+      console.error("Error connecting via SDK:", err);
+      setSessionStatus("DISCONNECTED");
     }
   };
 
@@ -430,7 +415,7 @@ function App() {
     };
   }, [sessionStatus]);
 
-  const agentSetKey = searchParams.get("agentConfig") || "default";
+  const agentSetKey = searchParams.get("agentConfig") || defaultAgentSetKey;
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
