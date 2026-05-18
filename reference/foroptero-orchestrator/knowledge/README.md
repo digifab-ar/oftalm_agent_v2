@@ -18,8 +18,7 @@ Cinco archivos por **responsabilidad de agente**. El servidor carga el subset qu
 Voz → servidor → Intérprete → Protocolo → Auditor → [merge + MQTT] → Comunicación → Voz
 ```
 
-El **pipeline** (`pipelineTurno.js`) carga solo el subset de cada agente vía `lib/knowledge.js`.  
-Monolito legacy (`OPENAI_USE_MONOLITH_ORCHESTRATOR=true`): concatena los cinco archivos + `prompts/sistema.md`.
+El **pipeline** (`pipelineTurno.js`) carga solo el subset de cada agente vía `lib/knowledge.js` + su prompt en `prompts/`.
 
 ## Archivos reemplazados (2026-05)
 
