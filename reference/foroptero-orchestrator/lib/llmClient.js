@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
+import { modelParaAgente, reasoningParaAgente } from './agentModels.js';
 
-const DEFAULT_MODEL = 'gpt-5-mini';
+export { modelParaAgente, reasoningParaAgente } from './agentModels.js';
+
 const DEFAULT_REASONING_EFFORT = 'low';
 
 let openaiClient = null;
@@ -23,29 +25,13 @@ function esModeloReasoning(model) {
 export function opcionesResponsesApi(model, reasoningEffort) {
   const opts = { model };
   if (esModeloReasoning(model)) {
-    const effort =
-      reasoningEffort?.trim() ||
-      process.env.OPENAI_REASONING_EFFORT?.trim() ||
-      DEFAULT_REASONING_EFFORT;
-    opts.reasoning = { effort };
+    opts.reasoning = {
+      effort: reasoningEffort?.trim() || DEFAULT_REASONING_EFFORT
+    };
   } else {
     opts.temperature = 0;
   }
   return opts;
-}
-
-export function modelParaAgente(agente) {
-  const key = `OPENAI_MODEL_${agente.toUpperCase()}`;
-  return (
-    process.env[key]?.trim() ||
-    process.env.OPENAI_MODEL?.trim() ||
-    DEFAULT_MODEL
-  );
-}
-
-export function reasoningParaAgente(agente) {
-  const key = `OPENAI_REASONING_${agente.toUpperCase()}`;
-  return process.env[key]?.trim() || undefined;
 }
 
 /**

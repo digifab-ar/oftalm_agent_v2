@@ -11,6 +11,7 @@ import {
 } from './estadoExamen.js';
 import { procesarTurno } from './orquestadorExamen.js';
 import { inicializarEjecutores } from './ejecutarAcciones.js';
+import { AGENT_MODELS } from './lib/agentModels.js';
 
 const app = express();
 app.use(cors());
@@ -226,11 +227,10 @@ app.get('/api/examen/registro.csv', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Foróptero Orchestrator en puerto ${PORT}`);
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-5-mini';
-  const reasoning = /^(o\d|gpt-5)/i.test(model)
-    ? `, reasoning=${process.env.OPENAI_REASONING_EFFORT?.trim() || 'low'}`
-    : '';
-  console.log(`   Modelo: ${model}${reasoning}`);
+  for (const [id, cfg] of Object.entries(AGENT_MODELS)) {
+    const r = cfg.reasoning ? `, reasoning=${cfg.reasoning}` : '';
+    console.log(`   ${id}: ${cfg.model}${r}`);
+  }
 
   inicializarEjecutores(
     ejecutarComandoForopteroInterno,

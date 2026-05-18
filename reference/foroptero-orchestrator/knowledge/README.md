@@ -18,7 +18,8 @@ Cinco archivos por **responsabilidad de agente**. El servidor carga el subset qu
 Voz → servidor → Intérprete → Protocolo → Auditor → [merge + MQTT] → Comunicación → Voz
 ```
 
-El **pipeline** (`pipelineTurno.js`) carga solo el subset de cada agente vía `lib/knowledge.js` + su prompt en `prompts/`.
+El **pipeline** (`pipelineTurno.js`) carga solo el subset de cada agente vía `lib/knowledge.js` + su prompt en `prompts/`.  
+Modelos OpenAI: `lib/agentModels.js`.
 
 ## Archivos reemplazados (2026-05)
 
