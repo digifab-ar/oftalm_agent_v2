@@ -1,6 +1,6 @@
 # Letras Sloan — nombres y variantes en español (POC)
 
-Referencia para **interpretar** `respuestaPaciente` (prosa, ASR). El agente de voz envía transcripción literal; **normalización y desambiguación** las hace el orquestador con el estado (`letraActual`, contexto).
+Referencia para **interpretar** `respuestaPaciente` (prosa, ASR). El agente de voz envía transcripción literal; **normalización y desambiguación** las hace el **agente clínico** con el estado (`letraActual`, contexto).
 
 Ámbito: **español rioplatense**; letras válidas en TV: **H, O, T, E, C, F, Z, L, P, D**.
 
@@ -32,7 +32,7 @@ Referencia para **interpretar** `respuestaPaciente` (prosa, ASR). El agente de v
 
 ---
 
-## Uso en el orquestador
+## Uso en el agente clínico
 
 1. **Extraé** de la frase una o más **letras Sloan candidatas** usando esta tabla (sin pedir al paciente un formato único).
 2. Si hay **una** candidata y coincide con `letraActual` → **correcta** (salvo reglas de doble confirmación).
