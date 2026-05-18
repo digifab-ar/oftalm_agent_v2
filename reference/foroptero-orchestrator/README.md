@@ -4,6 +4,20 @@ Servidor de examen visual con **agente intermedio** (OpenAI) + MQTT. Fase 1: agu
 
 Documentación de diseño: [../DISENO_AGENTE_INTERMEDIO.md](../DISENO_AGENTE_INTERMEDIO.md)
 
+Knowledge clínico (5 archivos por agente): [knowledge/README.md](./knowledge/README.md)
+
+## Pipeline multi-agente (default)
+
+Por turno: **intérprete** → **protocolo** → **auditor** (hasta 1 reintento) → patch + MQTT → **comunicación**.
+
+```
+agents/          # llamadas OpenAI por rol
+pipelineTurno.js # orquestación
+prompts/         # interprete.md, protocolo.md, comunicacion.md, auditor.md
+```
+
+Monolito legacy (un solo LLM): `OPENAI_USE_MONOLITH_ORCHESTRATOR=true`
+
 ## Requisitos
 
 - Node 18+

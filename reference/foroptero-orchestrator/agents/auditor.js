@@ -1,0 +1,44 @@
+import { cargarSystemAgente } from '../lib/knowledge.js';
+import { llamarAgenteJson } from '../lib/llmClient.js';
+import { AUDITOR_SCHEMA } from './schemas.js';
+
+function construirUser(estadoAntes, interpretacion, propuestaProtocolo) {
+  return [
+    '## Estado antes del patch',
+    '```json',
+    JSON.stringify(estadoAntes, null, 2),
+    '```',
+    '## Interpretación',
+    '```json',
+    JSON.stringify(interpretacion, null, 2),
+    '```',
+    '## Propuesta del agente protocolo',
+    '```json',
+    JSON.stringify(propuestaProtocolo, null, 2),
+    '```',
+    'Auditá y devolvé el JSON del schema.'
+  ].join('\n\n');
+}
+
+export function normalizarAuditoria(parsed) {
+  return {
+    aprobado: Boolean(parsed.aprobado),
+    violaciones: Array.isArray(parsed.violaciones) ? parsed.violaciones : [],
+    correccionSugerida: parsed.correccionSugerida ?? null
+  };
+}
+
+export async function ejecutarAuditor(
+  estadoAntes,
+  interpretacion,
+  propuestaProtocolo
+) {
+  const parsed = await llamarAgenteJson({
+    system: cargarSystemAgente('auditor'),
+    user: construirUser(estadoAntes, interpretacion, propuestaProtocolo),
+    schema: AUDITOR_SCHEMA,
+    schemaName: 'agente_auditor',
+    agente: 'auditor'
+  });
+  return normalizarAuditoria(parsed);
+}
