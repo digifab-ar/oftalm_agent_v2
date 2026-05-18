@@ -2,8 +2,8 @@
  * Modelos por agente del pipeline (fuente de verdad en código).
  * Editá acá para cambiar modelo / reasoning sin variables de entorno.
  *
- * Sugerencia latencia: intérprete, auditor y comunicación en gpt-4o-mini;
- * protocolo en el modelo más capaz que toleres (gpt-4.1-mini o gpt-5-mini).
+ * POC actual: los cuatro en gpt-4.1-mini (más rápido que gpt-5-mini).
+ * Si protocolo falla en cierres: protocolo en gpt-5-mini con reasoning: 'minimal'.
  */
 
 /** @typedef {{ model: string, reasoning?: 'minimal'|'low'|'medium'|'high' }} AgentModelConfig */
@@ -11,16 +11,16 @@
 /** @type {Record<'interprete'|'protocolo'|'auditor'|'comunicacion', AgentModelConfig>} */
 export const AGENT_MODELS = {
   interprete: {
-    model: 'gpt-4o-mini'
+    model: 'gpt-4.1-mini'
   },
   protocolo: {
     model: 'gpt-4.1-mini'
   },
   auditor: {
-    model: 'gpt-4o-mini'
+    model: 'gpt-4.1-mini'
   },
   comunicacion: {
-    model: 'gpt-4o-mini'
+    model: 'gpt-4.1-mini'
   }
 };
 
