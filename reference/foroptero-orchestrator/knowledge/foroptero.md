@@ -30,4 +30,5 @@ En POC usar solo la RX fija de examen-agudeza.md.
 ## Cuándo enviar
 
 - Al **iniciar** cada ojo (R o L).
-- No reenviar si solo cambia la letra en TV (misma RX y oclusión).
+- Al **cerrar R y abrir L** en el mismo turno clínico: **obligatorio** enviar foróptero en ese turno (no diferir al turno siguiente). Ver **sistema.md** (Cierre R → L) y **examen-agudeza.md** (Transición R → L).
+- No reenviar si solo cambia la letra en TV (misma RX y oclusión en el mismo ojo en test).

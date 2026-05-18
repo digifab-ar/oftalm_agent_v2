@@ -38,5 +38,6 @@ Referencia para **interpretar** `respuestaPaciente` (prosa, ASR). El agente de v
 2. Si hay **una** candidata y coincide con `letraActual` → **correcta** (salvo reglas de doble confirmación).
 3. Si hay **una** candidata claramente distinta de `letraActual` y **no** aplica un par de riesgo que abra duda → **incorrecta** (ver reglas de logMAR en examen-agudeza.md).
 4. Si el texto encaja con **varias** candidatas o con un **par de riesgo** relevante para `letraActual` → **ambigua**: repreguntá sin cambiar dispositivos; mensaje corto pidiendo aclarar entre dos letras o repetir el nombre.
+5. Si nombran una letra **fuera** de la lista Sloan (p. ej. “I”, “A”, “S”, “N”) sin mapeo claro en esta tabla → **ambigua**: repreguntá sin mover dispositivos. Podés pedir el nombre en español (“¿Es hache, ce, te…?”) o, si `letraActual` es una sola letra válida, preguntar por esa letra (“¿Es la te que ves?”). **No** inventes pares de riesgo no documentados (T/L) salvo que el audio encaje con un **par de riesgo** de la sección anterior.
 
 Este archivo **no** sustituye el criterio clínico ante `confianza` baja: si **`confianza` &lt; 0.7**, seguí examen-agudeza.md y **repreguntá** sin clasificar.
