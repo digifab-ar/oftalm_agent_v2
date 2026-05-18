@@ -53,5 +53,5 @@ El agente Realtime en `chatSupervisor` usa `consultarExamen` → `/api/examen/tu
 
 ## Railway
 
-- Variables: `OPENAI_API_KEY`, `OPENAI_MODEL` (opcional, default `gpt-4.1`), `PORT`
+- Variables: `OPENAI_API_KEY`, `OPENAI_MODEL` (opcional, default `gpt-5-mini`), `OPENAI_REASONING_EFFORT` (opcional, default `low` para modelos reasoning), `PORT`
 - Desplegar esta carpeta como servicio separado del backend legado.

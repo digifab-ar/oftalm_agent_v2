@@ -161,6 +161,26 @@ function cargarConocimiento() {
 
 const systemKnowledge = cargarConocimiento();
 
+const DEFAULT_MODEL = 'gpt-5-mini';
+const DEFAULT_REASONING_EFFORT = 'low';
+
+/** Modelos o* / gpt-5* usan reasoning en Responses API (sin temperature). */
+function esModeloReasoning(model) {
+  return /^(o\d|gpt-5)/i.test(String(model).trim());
+}
+
+function opcionesResponsesApi(model) {
+  const opts = { model };
+  if (esModeloReasoning(model)) {
+    const effort =
+      process.env.OPENAI_REASONING_EFFORT?.trim() || DEFAULT_REASONING_EFFORT;
+    opts.reasoning = { effort };
+  } else {
+    opts.temperature = 0;
+  }
+  return opts;
+}
+
 function construirUserMessage(estado, respuestaPaciente, confianza) {
   const partes = [
     '## Estado actual del examen',
@@ -240,13 +260,12 @@ export async function procesarTurno(respuestaPaciente = null, confianza = 1) {
       : 1;
 
   const openai = getOpenAI();
-  const model = process.env.OPENAI_MODEL || 'gpt-4.1';
+  const model = process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 
   let parsed;
   try {
     const response = await openai.responses.parse({
-      model,
-      temperature: 0,
+      ...opcionesResponsesApi(model),
       input: [
         {
           role: 'system',

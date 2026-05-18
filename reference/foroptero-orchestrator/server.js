@@ -226,7 +226,11 @@ app.get('/api/examen/registro.csv', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Foróptero Orchestrator en puerto ${PORT}`);
-  console.log(`   Modelo: ${process.env.OPENAI_MODEL || 'gpt-4.1'}`);
+  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-5-mini';
+  const reasoning = /^(o\d|gpt-5)/i.test(model)
+    ? `, reasoning=${process.env.OPENAI_REASONING_EFFORT?.trim() || 'low'}`
+    : '';
+  console.log(`   Modelo: ${model}${reasoning}`);
 
   inicializarEjecutores(
     ejecutarComandoForopteroInterno,
