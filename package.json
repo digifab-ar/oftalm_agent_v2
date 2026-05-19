@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:turnoPaciente": "npx tsx --test src/app/lib/turnoPaciente.test.ts"
   },
   "dependencies": {
     "@openai/agents": "^0.11.4",

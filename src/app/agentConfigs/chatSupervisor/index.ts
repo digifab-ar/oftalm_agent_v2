@@ -1,4 +1,9 @@
 import { RealtimeAgent, tool } from '@openai/agents/realtime';
+import { postExamenTurno } from '@/app/lib/examenTurnoClient';
+import {
+  limpiarTurnoPaciente,
+  resolverTurnoParaRequest
+} from '@/app/lib/turnoPaciente';
 
 const ORCHESTRATOR_URL =
   process.env.NEXT_PUBLIC_FOROPTERO_ORCHESTRATOR_URL ||
@@ -14,7 +19,7 @@ No agregues introducción, contexto ni transiciones propias.
 
 # REGLA CRÍTICA — LO QUE MANDÁS CUANDO EL PACIENTE HABLÓ
 Al llamar consultarExamen con 'respuestaPaciente':
-- Solo podés enviar **respuestaPaciente** y **confianza** (nada más; no envíes letra normalizada, JSON extra ni etiquetas clínicas en otros campos).
+- Enviá **respuestaPaciente** (transcripción literal) y **confianza** (0 a 1). El cliente adjunta automáticamente un identificador de turno al backend; no lo menciones al paciente ni intentes rellenarlo vos.
 - Mandá transcripción lo más literal posible de lo escuchado (como sonó), incluyendo dudas o muletillas si las dijo.
 - No normalices para “corregir” lo que creés que debió ver; no cambies letras ni completás por contexto del examen.
 - Nada de clasificación clínica: sin correcto/incorrecto, sin diagnóstico, sin etiquetas.
@@ -76,6 +81,32 @@ function respuestaTurnoParaAgenteVoz(data: Record<string, unknown>) {
   };
 }
 
+function armarBodyTurno(args: {
+  respuestaPaciente?: string | null;
+  confianza?: number | null;
+}): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  const textoModelo =
+    args.respuestaPaciente != null
+      ? String(args.respuestaPaciente).trim()
+      : '';
+
+  if (textoModelo !== '') {
+    const turno = resolverTurnoParaRequest(textoModelo);
+    if (turno) {
+      body.respuestaPaciente = turno.respuestaPaciente;
+      body.timestamp = turno.timestamp;
+    } else {
+      body.respuestaPaciente = textoModelo;
+    }
+    if (typeof args.confianza === 'number' && !Number.isNaN(args.confianza)) {
+      body.confianza = args.confianza;
+    }
+  }
+
+  return body;
+}
+
 export const chatAgent = new RealtimeAgent({
   name: 'Oftalmólogo Virtual',
   instructions: INSTRUCCIONES_BASE_CHATAGENT,
@@ -84,7 +115,7 @@ export const chatAgent = new RealtimeAgent({
     tool({
       name: 'consultarExamen',
       description:
-        'Consulta al backend del examen visual. Únicos argumentos con respuesta del paciente: respuestaPaciente (transcripción literal, una sola cadena) y confianza (0-1) en la comprensión del audio. No envíes letra corregida ni campos extra. Sin parámetros al iniciar o cuando contextoVoz indica continuar_sin_respuesta tras haber pronunciado los mensajes.',
+        'Consulta al backend del examen visual. Con respuesta del paciente: respuestaPaciente (transcripción literal) y confianza (0-1). El cliente añade el identificador de turno en HTTP. Sin parámetros al iniciar o cuando contextoVoz indica continuar_sin_respuesta tras haber pronunciado los mensajes.',
       parameters: {
         type: 'object',
         properties: {
@@ -109,34 +140,36 @@ export const chatAgent = new RealtimeAgent({
           respuestaPaciente?: string | null;
           confianza?: number | null;
         };
-        const body: Record<string, unknown> = {};
-        if (
-          args.respuestaPaciente != null &&
-          String(args.respuestaPaciente).trim() !== ''
-        ) {
-          body.respuestaPaciente = String(args.respuestaPaciente).trim();
-          if (typeof args.confianza === 'number' && !Number.isNaN(args.confianza)) {
-            body.confianza = args.confianza;
-          }
-        }
+        const body = armarBodyTurno(args);
+        const tieneRespuesta = 'respuestaPaciente' in body;
 
         try {
-          const response = await fetch(`${ORCHESTRATOR_URL}/api/examen/turno`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+          const { response, data } = await postExamenTurno(
+            `${ORCHESTRATOR_URL}/api/examen/turno`,
+            body
+          );
 
-          const data = await response.json();
           if (!response.ok) {
             return {
               ok: false,
-              msg: data.error || response.statusText
+              msg:
+                typeof data.error === 'string'
+                  ? data.error
+                  : response.statusText
             };
           }
-          return respuestaTurnoParaAgenteVoz(
-            data as Record<string, unknown>
-          );
+
+          if (tieneRespuesta) {
+            limpiarTurnoPaciente();
+          }
+
+          if (process.env.NODE_ENV === 'development' && tieneRespuesta) {
+            console.debug('[consultarExamen] turno registrado', {
+              timestamp: body.timestamp
+            });
+          }
+
+          return respuestaTurnoParaAgenteVoz(data);
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);
           return { ok: false, msg: `Error de conexión: ${message}` };

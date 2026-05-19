@@ -66,7 +66,7 @@ En POC usar solo la RX de demostración del protocolo.
 
 ### Cuándo **no** enviar TV
 
-- Tras **correcta** que cierra el ojo (`aciertosPorLogmar[logmarActual] >= 2`) en ese ojo: no `tv` para seguir en el mismo ojo; si abrís el otro ojo, sí TV del **nuevo** ojo.
+- Tras **correcta** que cierra el ojo (`resultadosPorLogmar[logmarActual].correcto >= 2` en el estado tras registro) en ese ojo: no `tv` para seguir en el mismo ojo; si abrís el otro ojo, sí TV del **nuevo** ojo.
 
 ---
 

@@ -2,6 +2,8 @@
 
 JSON para validación **manual** del auditor: armar el user prompt como `agents/auditor.js` (`estadoAntes`, `interpretacion`, `propuestaProtocolo`, `modo`).
 
+**Importante (diseño 2026-05-19):** en `modo: respuesta`, el campo `estadoAntes` de cada fixture representa el estado **tras registro del intento** en servidor (`resultadosPorLogmar` ya actualizado). El protocolo **no** debe incluir contadores en el patch; en cierre R solo `logmarFinal` (sin `letraFinal`).
+
 Cada fixture incluye `esperado.aprobado` y notas. No hay runner automatizado en esta iteración.
 
 | ID | Archivo | Clasificación | Resultado esperado |

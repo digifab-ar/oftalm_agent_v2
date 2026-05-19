@@ -6,6 +6,7 @@ import {
 } from '@openai/agents/realtime';
 
 import { applyCodecPreferences } from '../lib/codecUtils';
+import { limpiarTurnoPaciente } from '../lib/turnoPaciente';
 import { useEvent } from '../contexts/EventContext';
 import { useHandleSessionHistory } from './useHandleSessionHistory';
 import { SessionStatus } from '../types';
@@ -47,12 +48,12 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
     // Handle additional server events that aren't managed by the session
     switch (event.type) {
       case "conversation.item.input_audio_transcription.completed": {
-        historyHandlers.handleTranscriptionCompleted(event);
+        historyHandlers.handleTranscriptionCompleted(event, { esPaciente: true });
         break;
       }
       case "response.output_audio_transcript.done":
       case "response.audio_transcript.done": {
-        historyHandlers.handleTranscriptionCompleted(event);
+        historyHandlers.handleTranscriptionCompleted(event, { esPaciente: false });
         break;
       }
       case "response.output_audio_transcript.delta":
@@ -157,6 +158,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const disconnect = useCallback(() => {
     sessionRef.current?.close();
     sessionRef.current = null;
+    limpiarTurnoPaciente();
     updateStatus('DISCONNECTED');
   }, [updateStatus]);
 

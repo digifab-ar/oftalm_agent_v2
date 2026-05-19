@@ -1,7 +1,8 @@
 {
   "id": "AUD-07",
-  "descripcion": "no_ve @0.1 con aciertosPorLogmar['0.2']=1 previo; propuesta sube a E@0.2 pero RESETEA aciertosPorLogmar['0.2'] de 1 a 0 (regresión log 2026-05-19 turno 4). Esperado: rechazo por anti-patrón 'reset de contadores ganados'.",
+  "descripcion": "no_ve @0.1 tras registro; propuesta incluye aciertosPorLogmar que resetea 0.2 — rechazar",
   "modo": "respuesta",
+  "nota": "estadoAntes = estado tras registro (0.1.incorrecto ya = 1)",
   "estadoAntes": {
     "fase": "agudeza",
     "ojoActual": "R",
@@ -9,16 +10,14 @@
       "R": {
         "logmarActual": 0.1,
         "letraActual": "T",
-        "confirmaciones": 0,
+        "resultadosPorLogmar": {
+          "0.3": { "correcto": 1, "incorrecto": 0 },
+          "0.2": { "correcto": 1, "incorrecto": 0 },
+          "0.1": { "correcto": 0, "incorrecto": 1 },
+          "0.0": { "correcto": 0, "incorrecto": 0 }
+        },
         "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
         "letrasUsadas": ["H", "O", "T"]
-      },
-      "L": {
-        "logmarActual": null,
-        "letraActual": null,
-        "confirmaciones": 0,
-        "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
-        "letrasUsadas": []
       }
     }
   },
@@ -30,26 +29,21 @@
   },
   "propuestaProtocolo": {
     "estadoPatch": {
-      "fase": "agudeza",
-      "ojoActual": "R",
       "agudeza": {
         "R": {
           "logmarActual": 0.2,
           "letraActual": "E",
-          "confirmaciones": 0,
           "aciertosPorLogmar": { "0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0 },
           "letrasUsadas": ["H", "O", "T", "E"]
         }
       }
     },
     "acciones": [{ "dispositivo": "tv", "letra": "E", "logmar": 0.2 }],
-    "evento": "siguiente_optotipo",
-    "detalleEvento": {},
-    "razonamientoProtocolo": "no_ve en 0.1: subir a 0.2 y rotar letra a E."
+    "evento": "siguiente_optotipo"
   },
   "esperado": {
     "aprobado": false,
-    "violacionEsperada": "patch decrementa aciertosPorLogmar['0.2'] de 1 a 0 en clasificación no_ve",
-    "correccionEsperada": "omitir aciertosPorLogmar del patch o copiarlo idéntico a estadoAntes ({0.3:1, 0.2:1, 0.1:0, 0.0:0})"
+    "violacionEsperada": "patch incluye o altera aciertosPorLogmar / resultadosPorLogmar en no_ve",
+    "correccionEsperada": "omitir contadores del patch; solo logmarActual, letraActual, letrasUsadas y tv"
   }
 }

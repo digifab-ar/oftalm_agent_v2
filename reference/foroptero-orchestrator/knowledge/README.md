@@ -29,8 +29,10 @@ knowledge/
 ## Pipeline
 
 ```
-Voz → servidor → Intérprete → Protocolo → Auditor → [merge + MQTT] → Comunicación → Voz
+Voz → servidor → Intérprete → Registro intento (resultadosPorLogmar) → Protocolo → Auditor → [merge + MQTT] → Comunicación → Voz
 ```
+
+En agudeza (`modo: respuesta`), el orquestador incrementa contadores en código **antes** del protocolo. El protocolo **no** escribe contadores en el patch. Ver [../PLAN_TABLA_RESULTADOS_AGUDEZA.md](../PLAN_TABLA_RESULTADOS_AGUDEZA.md).
 
 `pipelineTurno.js` + `lib/knowledge.js` + `lib/estimulo.js`.
 

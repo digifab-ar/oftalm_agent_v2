@@ -1,7 +1,8 @@
 {
   "id": "AUD-03",
-  "descripcion": "correcta @0.3: solo incrementa contador, siguiente_optotipo sin tv — anti-patrón T3",
+  "descripcion": "correcta @0.3 tras registro (0.3.correcto=1): patch sin bajar logMAR ni tv — anti-patrón T3",
   "modo": "respuesta",
+  "nota": "estadoAntes = estado tras registro del intento en servidor",
   "estadoAntes": {
     "fase": "agudeza",
     "ojoActual": "R",
@@ -9,7 +10,13 @@
       "R": {
         "logmarActual": 0.3,
         "letraActual": "H",
-        "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
+        "resultadosPorLogmar": {
+          "0.3": { "correcto": 1, "incorrecto": 0 },
+          "0.2": { "correcto": 0, "incorrecto": 0 },
+          "0.1": { "correcto": 0, "incorrecto": 0 },
+          "0.0": { "correcto": 0, "incorrecto": 0 }
+        },
+        "aciertosPorLogmar": { "0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0 },
         "letrasUsadas": ["H"]
       }
     }
@@ -25,8 +32,7 @@
       "agudeza": {
         "R": {
           "logmarActual": 0.3,
-          "letraActual": "H",
-          "aciertosPorLogmar": { "0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0 }
+          "letraActual": "H"
         }
       }
     },

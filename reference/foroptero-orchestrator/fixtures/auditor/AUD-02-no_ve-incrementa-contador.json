@@ -1,7 +1,8 @@
 {
   "id": "AUD-02",
-  "descripcion": "no_ve pero patch incrementa aciertosPorLogmar['0.2'] — debe rechazarse",
+  "descripcion": "no_ve tras registro; patch incrementa aciertosPorLogmar en patch — debe rechazarse",
   "modo": "respuesta",
+  "nota": "estadoAntes = estado tras registro (0.1.incorrecto=1); propuesta no debe tocar contadores",
   "estadoAntes": {
     "fase": "agudeza",
     "ojoActual": "R",
@@ -9,7 +10,12 @@
       "R": {
         "logmarActual": 0.1,
         "letraActual": "T",
-        "confirmaciones": 0,
+        "resultadosPorLogmar": {
+          "0.3": { "correcto": 1, "incorrecto": 0 },
+          "0.2": { "correcto": 1, "incorrecto": 0 },
+          "0.1": { "correcto": 0, "incorrecto": 1 },
+          "0.0": { "correcto": 0, "incorrecto": 0 }
+        },
         "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
         "letrasUsadas": ["H", "O", "T"]
       }

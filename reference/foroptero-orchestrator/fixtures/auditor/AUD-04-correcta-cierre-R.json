@@ -1,15 +1,23 @@
 {
   "id": "AUD-04",
-  "descripcion": "correcta 2.º acierto en 0.2 → cierre R + inicio L en mismo turno",
+  "descripcion": "correcta 2.º acierto en 0.2 (tras registro 0.2.correcto=2) → cierre R + inicio L",
   "modo": "respuesta",
+  "nota": "estadoAntes = estado tras registro; patch sin contadores ni letraFinal",
   "estadoAntes": {
     "fase": "agudeza",
     "ojoActual": "R",
+    "rx": { "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0 } },
     "agudeza": {
       "R": {
         "logmarActual": 0.2,
         "letraActual": "E",
-        "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
+        "resultadosPorLogmar": {
+          "0.3": { "correcto": 1, "incorrecto": 0 },
+          "0.2": { "correcto": 2, "incorrecto": 0 },
+          "0.1": { "correcto": 0, "incorrecto": 0 },
+          "0.0": { "correcto": 0, "incorrecto": 0 }
+        },
+        "aciertosPorLogmar": { "0.3": 1, "0.2": 2, "0.1": 0, "0.0": 0 },
         "letrasUsadas": ["H", "O", "T", "E"]
       }
     }
@@ -25,14 +33,11 @@
       "ojoActual": "L",
       "agudeza": {
         "R": {
-          "logmarFinal": 0.2,
-          "letraFinal": "E",
-          "aciertosPorLogmar": { "0.3": 1, "0.2": 2, "0.1": 0, "0.0": 0 }
+          "logmarFinal": 0.2
         },
         "L": {
           "logmarActual": 0.3,
           "letraActual": "H",
-          "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
           "letrasUsadas": ["H"]
         }
       }

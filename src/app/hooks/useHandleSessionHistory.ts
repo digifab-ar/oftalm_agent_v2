@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
+import { asignarDesdeTranscripcion } from "@/app/lib/turnoPaciente";
 
 export function useHandleSessionHistory() {
   const {
@@ -135,7 +136,10 @@ export function useHandleSessionHistory() {
     }
   }
 
-  function handleTranscriptionCompleted(item: any) {
+  function handleTranscriptionCompleted(
+    item: any,
+    options?: { esPaciente?: boolean }
+  ) {
     // History updates don't reliably end in a completed item, 
     // so we need to handle finishing up when the transcription is completed.
     const itemId = item.item_id;
@@ -148,6 +152,13 @@ export function useHandleSessionHistory() {
       // Use the ref to get the latest transcriptItems
       const transcriptItem = transcriptItems.find((i) => i.itemId === itemId);
       updateTranscriptItem(itemId, { status: 'DONE' });
+
+      const esPaciente =
+        options?.esPaciente === true ||
+        transcriptItem?.role === 'user';
+      if (esPaciente) {
+        asignarDesdeTranscripcion(finalTranscript);
+      }
 
       // If guardrailResult still pending, mark PASS.
       if (transcriptItem?.guardrailResult?.status === 'IN_PROGRESS') {
