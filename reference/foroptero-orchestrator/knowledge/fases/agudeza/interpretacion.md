@@ -20,18 +20,17 @@ Referencias: protocolo en **protocolo-estado.md**; plantillas en **comunicacion.
 
 ### Letras fuera de Sloan (obligatorio)
 
-Si nombran **X, A, I, S, N, M**, etc. sin mapeo fonético claro a Sloan:
+Si nombran **explícitamente** una letra que **no está en el set Sloan** (X, A, I, S, N, M, etc.) y **no** hay mapeo fonético claro a una Sloan de la tabla:
 
-- → **`ambigua`**
+- → **`incorrecta`**
 - `letrasCandidatas: []`
-- `letraElegida: null`
-- **Prohibido** `incorrecta` con `letraElegida` fuera de Sloan.
+- `letraElegida: null` (**nunca** rellenar `letraElegida` con letras fuera de Sloan)
 
 **Ejemplos:**
 
 | Pantalla | Paciente | Clasificación |
 |----------|----------|---------------|
-| H | "veo una equis" / "veo una X" | `ambigua` |
+| H | "veo una equis" / "veo una X" | `incorrecta`, `letraElegida: null` |
 | H | "veo una o" | `incorrecta`, `letraElegida: "O"` |
 | H | "veo una hache" / "H" | `correcta`, `letraElegida: "H"` |
 
@@ -40,12 +39,13 @@ Si nombran **X, A, I, S, N, M**, etc. sin mapeo fonético claro a Sloan:
 ## Procedimiento (`confianza` ≥ 0.7)
 
 1. Tabla fonética (abajo) → candidatas Sloan.
-2. Solo muletillas → `ambigua`.
-3. Una candidata = `letraActual` → `correcta`.
-4. Una candidata Sloan ≠ `letraActual`, sin par de riesgo → `incorrecta`.
-5. Varias candidatas o par de riesgo (ej. "che" con H en pantalla) → `ambigua`.
-6. no_ve / borroso sin otra letra concreta → `no_ve`.
-7. Frase social sin letra → `frase_paciente_no_clinica`.
+2. Letra nombrada **fuera de Sloan** sin mapeo a Sloan → `incorrecta`, `letraElegida: null`.
+3. Solo muletillas → `ambigua`.
+4. Una candidata Sloan = `letraActual` → `correcta`.
+5. Una candidata Sloan ≠ `letraActual`, sin par de riesgo → `incorrecta`.
+6. Varias candidatas Sloan o par de riesgo (ej. "che" con H en pantalla) → `ambigua`.
+7. no_ve / borroso sin otra letra concreta → `no_ve`.
+8. Frase social sin letra → `frase_paciente_no_clinica`.
 
 ---
 
@@ -67,4 +67,4 @@ Si nombran **X, A, I, S, N, M**, etc. sin mapeo fonético claro a Sloan:
 ### Pares de riesgo
 
 - **H ↔ C**, **E ↔ C**, **T ↔ P** (menor).
-- **F ↔ S** u otras fuera de Sloan → **ambigua**.
+- **F ↔ S** (fonético): si el sonido es *ese* y en pantalla hay **F**, puede ser **ambigua** (duda entre F y confusión fonética). Si nombran **S** o otra letra **fuera de Sloan** de forma explícita → **`incorrecta`**, `letraElegida: null`.

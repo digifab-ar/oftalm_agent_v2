@@ -27,9 +27,9 @@ Turno sin texto → `clasificacion: continuacion`.
 | Valor | Cuándo (transversal) |
 |-------|----------------------|
 | **correcta** | Respuesta clara que coincide con el estímulo de referencia (según reglas de fase). |
-| **incorrecta** | Respuesta clara que contradice el estímulo (según reglas de fase). |
+| **incorrecta** | Respuesta clara que contradice el estímulo (según reglas de fase), incluido nombrar un valor imposible en el vocabulario del estímulo (ej. letra no Sloan en agudeza). |
 | **no_ve** | No distingue / no sabe / borroso, sin nombrar una respuesta concreta válida de la fase. |
-| **ambigua** | Sin candidata clara, varias candidatas, fuera del vocabulario de la fase, o par de riesgo. |
+| **ambigua** | Sin candidata clara, varias candidatas Sloan, o par de riesgo fonético entre Sloan. |
 | **confianza_baja** | `confianza` < 0.7. |
 | **frase_paciente_no_clinica** | Intención social sin contenido clínico de la fase. |
 | **continuacion** | Sin `respuestaPaciente` en este turno. |
@@ -46,5 +46,5 @@ Si el user incluye `modo: bootstrap` → `continuacion`, `letrasCandidatas: []`,
 
 ## Salida JSON
 
-- `letraElegida` (u homólogo de fase): solo si la fase define un valor único claro y válido.
-- Si el paciente nombra algo **fuera del vocabulario válido de la fase** → `ambigua` y `letraElegida: null` (ver knowledge de fase).
+- `letraElegida` (u homólogo de fase): solo si la fase define un valor único claro y **válido** (en agudeza: solo Sloan).
+- Si el paciente nombra algo **fuera del vocabulario válido de la fase** de forma explícita → `incorrecta` y `letraElegida: null` (ver knowledge de fase).

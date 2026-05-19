@@ -547,7 +547,7 @@ flowchart TB
             <dt>Knowledge</dt><dd><code>core/interpretacion-comun.md</code> + <code>fases/agudeza/interpretacion.md</code></dd>
             <dt>User</dt><dd><code>estimulo</code> (letra/logMAR/ojo vía <code>lib/estimulo.js</code>), <code>fase</code>, <code>modo</code></dd>
             <dt>Bootstrap</dt><dd><strong>No se invoca</strong> — interpretación fija en pipeline</dd>
-            <dt>Regla clave</dt><dd>Letras fuera Sloan (X, A, …) → <code>ambigua</code>, no <code>incorrecta</code></dd>
+            <dt>Regla clave</dt><dd>Letras fuera Sloan (X, A, …) → <code>incorrecta</code>, <code>letraElegida: null</code></dd>
           </dl>
         </article>
 
@@ -602,7 +602,7 @@ flowchart TB
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
           <tr><td>Clasificaciones</td><td><code>correcta</code>, <code>incorrecta</code>, <code>no_ve</code>, <code>ambigua</code>, <code>confianza_baja</code>, <code>frase_paciente_no_clinica</code>, <code>continuacion</code></td></tr>
-          <tr><td>Sloan</td><td>H, O, T, E, C, F, Z, L, P, D — fuera de lista → <code>ambigua</code></td></tr>
+          <tr><td>Sloan</td><td>H, O, T, E, C, F, Z, L, P, D — fuera de lista → <code>incorrecta</code></td></tr>
           <tr><td>Estímulo</td><td>Usar <code>estimulo</code> del user (no hardcodear en prompt genérico)</td></tr>
           <tr><td>Confianza</td><td>&lt; 0.7 → <code>confianza_baja</code></td></tr>
         </tbody>
@@ -771,7 +771,7 @@ flowchart TB
           </thead>
           <tbody>
             <tr><td>T0</td><td>bootstrap</td><td><code>continuacion</code></td><td><code>inicio_ojo</code></td><td>H@0.3</td></tr>
-            <tr><td>T1</td><td>"veo una X"</td><td><code>ambigua</code></td><td><code>repregunta_sin_cambio</code></td><td>Sin cambio</td></tr>
+            <tr><td>T1</td><td>"veo una X"</td><td><code>incorrecta</code></td><td>sube logMAR / rota + <code>tv</code></td><td>Cambio según protocolo</td></tr>
             <tr><td>T2</td><td>"veo una H"</td><td><code>correcta</code></td><td><code>siguiente_optotipo</code></td><td>Nueva letra @ <strong>0.2</strong></td></tr>
             <tr><td>T4</td><td>"veo borroso" (<code>no_ve</code>)</td><td><code>no_ve</code></td><td>Sube E@0.2, contadores sin cambio</td><td>E@0.2 — auditor <strong>aprueba</strong> (AUD-01)</td></tr>
             <tr><td>…</td><td>2.º acierto mismo logMAR</td><td><code>correcta</code></td><td><code>cierre_ojo_R_e_inicio_L</code></td><td>L H@0.3</td></tr>

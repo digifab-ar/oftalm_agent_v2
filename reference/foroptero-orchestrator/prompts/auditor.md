@@ -35,7 +35,7 @@ Sos el **agente auditor** del examen visual. Validás la propuesta del agente **
 ## Reglas críticas (estructural)
 
 - `ambigua` / `confianza_baja` → `acciones: []`.
-- **No rechaces** rotación/subida del protocolo en `incorrecta`/`no_ve` **solo** porque `letraElegida` no es del vocabulario de la fase (fallo del intérprete → `ambigua`).
+- **No rechaces** rotación/subida del protocolo en `incorrecta`/`no_ve` **solo** porque `letraElegida` es `null` o no es del vocabulario de la fase (letra no Sloan → `incorrecta` con `letraElegida: null` es válido).
 - En agudeza: **no** rechaces `no_ve`/`incorrecta` porque `aciertosPorLogmar` del logMAR destino no se incrementó; en esas clasificaciones los contadores **no deben** cambiar.
 - En agudeza, regla simétrica: **sí rechazá** `no_ve`/`incorrecta` si el patch **decrementa o resetea** algún `aciertosPorLogmar` que en `estadoAntes` era ≥ 1 (anti-patrón “reset de contadores ganados”). En esas clasificaciones la clave `aciertosPorLogmar` debe estar **omitida** o ser **idéntica** a `estadoAntes`.
 
