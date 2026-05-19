@@ -76,6 +76,8 @@ Globales: `fase`, `ojoActual`, `finalizado`.
 | **ambigua** / **confianza_baja** | `estadoPatch: {}`. No tocar contadores. |
 | **continuacion** (bootstrap) | Inicializar todos los contadores del ojo activo en `0` (caso de Inicio del test). |
 
+**Acumulación a lo largo del examen.** Los contadores `aciertosPorLogmar[k]` son **acumulativos** durante toda la corrida del ojo activo. Un `no_ve` o `incorrecta` que sube a un logMAR distinto **no** descuenta ni resetea aciertos previos. Por ejemplo, si la trayectoria es `0.2 correcta → 0.1 no_ve → vuelta a 0.2 correcta`, el contador `aciertosPorLogmar[0.2]` pasa de `1` a `2` y dispara el cierre por la regla "≥ 2" (ver Árbol tras correcta, paso 2), aunque las dos correctas no hayan sido consecutivas.
+
 **Prohibido (anti-patrón “reset de contadores ganados”):**
 
 - Emitir `aciertosPorLogmar` con valores **menores** a los de `estadoAntes` para ese ojo (ej. estado `0.2: 1` → patch `0.2: 0`).
@@ -114,12 +116,17 @@ patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0}
 
 ## Árbol tras **correcta** (orden estricto)
 
-1. `aciertosPorLogmar[logmarActual] += 1` (simular primero).
+1. `aciertosPorLogmar[logmarActual] += 1` (simular primero, sobre el valor literal de `estadoAntes`).
 2. Si **≥ 2**: `logmarFinal`, `letraFinal`; si **R** → transición R→L (mismo turno); si **L** → `fase: finalizado`; **sin** bajar ni `tv` en ese ojo.
 3. Si **= 1** y `logmarActual > 0.0`: **bajar** logMAR, rotar letra Sloan, **`tv` obligatoria**, `evento: siguiente_optotipo`.
 4. Si **= 1** y `logmarActual == 0.0`: rotar letra, `tv`, `siguiente_optotipo`.
 
-**Prohibido:** `siguiente_optotipo` con `acciones: []` cuando el paso 3 o 4 exige cambio de letra/logMAR.
+**Prohibido (clasificación `correcta`):**
+
+- Emitir `estadoPatch: {}` o `acciones: []`. La clasificación `correcta` **siempre** produce cambio de estado: rama 2 (≥ 2) → patch de cierre + (R) transición a L en el mismo turno o (L) `fase: finalizado`; rama 3 (= 1, `logmarActual > 0.0`) → bajada de logMAR + nueva letra + `tv`; rama 4 (= 1, `logmarActual == 0.0`) → rotación de letra + `tv`.
+- Usar `evento: repregunta_sin_cambio` ante `correcta` (ese evento es exclusivo de `ambigua`/`confianza_baja`).
+- `siguiente_optotipo` con `acciones: []` cuando el paso 3 o 4 exige cambio de letra/logMAR.
+- `siguiente_optotipo` o `tv` sobre el ojo R cuando la simulación arroja ≥ 2 en R (la rama 2 manda y exige `cierre_ojo_R_e_inicio_L`).
 
 ---
 
@@ -129,6 +136,67 @@ patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0}
 2. `ojoActual: "L"`.
 3. `acciones`: foróptero (L open, R close) + TV H@0.3.
 4. `evento: cierre_ojo_R_e_inicio_L`.
+
+### Ejemplo literal (rama 2 en ojo R, post `no_ve` intercalado — regresión log 2026-05-19)
+
+`estadoAntes` (extracto):
+
+```json
+{
+  "ojoActual": "R",
+  "rx": { "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0 } },
+  "agudeza": {
+    "R": {
+      "logmarActual": 0.2, "letraActual": "E",
+      "aciertosPorLogmar": {"0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0},
+      "letrasUsadas": ["H", "O", "T", "E"]
+    },
+    "L": {
+      "logmarActual": null, "letraActual": null,
+      "aciertosPorLogmar": {"0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0},
+      "letrasUsadas": []
+    }
+  }
+}
+```
+
+`interpretacion.clasificacion === "correcta"`, `letraElegida === "E"`.
+
+Propuesta esperada del protocolo:
+
+```json
+{
+  "estadoPatch": {
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarFinal": 0.2,
+        "letraFinal": "E",
+        "aciertosPorLogmar": {"0.3": 1, "0.2": 2, "0.1": 0, "0.0": 0}
+      },
+      "L": {
+        "logmarActual": 0.3,
+        "letraActual": "H",
+        "aciertosPorLogmar": {"0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0},
+        "letrasUsadas": ["H"]
+      }
+    }
+  },
+  "acciones": [
+    {
+      "dispositivo": "foroptero",
+      "config": {
+        "R": { "occlusion": "close" },
+        "L": { "occlusion": "open", "esfera": 2.75, "cilindro": 0, "angulo": 0 }
+      }
+    },
+    { "dispositivo": "tv", "letra": "H", "logmar": 0.3 }
+  ],
+  "evento": "cierre_ojo_R_e_inicio_L",
+  "detalleEvento": {},
+  "razonamientoProtocolo": "Simulación 0.2:1+1=2 ⇒ rama 2 (cierre R). Patch R con logmarFinal/letraFinal y contadores ≥ 2; patch L inicializado a H@0.3; MQTT foróptero (R close, L open + RX_L) + TV H@0.3."
+}
+```
 
 ---
 

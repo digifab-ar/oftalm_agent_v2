@@ -15,16 +15,42 @@ Si `modo: bootstrap`: *Inicio del test por ojo* → `inicio_ojo`, H@0.3, contado
 
 ## Árbol tras **correcta** (orden obligatorio)
 
-1. Simulá `aciertosPorLogmar[logmarActual] += 1`.
-2. Si **≥ 2**: `logmarFinal`, `letraFinal`; ojo **R** → `cierre_ojo_R_e_inicio_L` + patch L + foróptero + TV H@0.3; ojo **L** → `fase: finalizado`. **Sin** bajar logMAR ni `tv` en ese ojo.
-3. Si **= 1** y `logmarActual > 0.0`: **bajar** un paso (0.3→0.2, etc.), letra Sloan no usada, **`tv` obligatoria**, `siguiente_optotipo`.
+1. Simulá `aciertosPorLogmar[logmarActual] += 1` usando el contador **literal** de `estadoAntes`. El contador es **acumulado en todo el examen**: no se reinicia ni se "descuenta" por un `no_ve`/`incorrecta` intercalado en otro logMAR.
+2. Si **≥ 2** (cierre del ojo activo):
+   - Ojo **R** → emití patch + acciones de **transición R → L en el mismo turno** (ver plantilla abajo). `evento: cierre_ojo_R_e_inicio_L`. **Prohibido** bajar logMAR o emitir `tv` para el ojo R en ese turno.
+   - Ojo **L** → `agudeza.L.logmarFinal`, `letraFinal`, `fase: finalizado`. Sin `tv`.
+3. Si **= 1** y `logmarActual > 0.0`: **bajar** un paso (0.3→0.2→0.1→0.0), letra Sloan no usada, **`tv` obligatoria**, `siguiente_optotipo`.
 4. Si **= 1** y `logmarActual == 0.0`: rotar letra, `tv`, `siguiente_optotipo`.
 
-**Prohibido:** solo incrementar contadores con `siguiente_optotipo` y `acciones: []` cuando corresponde el paso 3 o 4.
+### Plantilla de cierre R → L (rama 2, ojo R)
 
-### Ejemplo QA
+Cuando el paso 2 dispara cierre de R, el `estadoPatch` debe contener **simultáneamente**:
 
-Estado: R, H@0.3, `0.3:0`. Clasificación **correcta** H → patch `0.3:1`, `logmarActual: 0.2`, nueva letra, `tv` @ 0.2, `siguiente_optotipo`.
+- `ojoActual: "L"`.
+- `agudeza.R`: `logmarFinal` y `letraFinal` (los que cerraron R) + `aciertosPorLogmar` simulado (≥ 2 en el logMAR de cierre).
+- `agudeza.L`: `logmarActual: 0.3`, `letraActual: "H"`, `aciertosPorLogmar: {"0.3":0,"0.2":0,"0.1":0,"0.0":0}`, `letrasUsadas: ["H"]`.
+
+Y `acciones` debe llevar **en este orden**:
+
+1. `foroptero` con `R: { occlusion: "close" }` y `L: { occlusion: "open", esfera, cilindro, angulo }` (RX de L tomada de `estadoAntes.rx.L`).
+2. `tv` con `letra: "H"`, `logmar: 0.3`.
+
+### Anti-patrones (rechazo seguro)
+
+- **Patch vacío en `correcta`**: si `interpretacion.clasificacion === "correcta"`, **prohibido** emitir `estadoPatch: {}` y/o `acciones: []`. La rama 2 exige cierre + transición; las ramas 3 y 4 exigen bajada/rotación + `tv`. Si la simulación es ambigua, **no** uses `repregunta_sin_cambio` — releé `estadoAntes` y aplicá el árbol.
+- **Sub-emisión en la rama 2**: prohibido `siguiente_optotipo` con cualquier `tv` sobre el ojo R cuando la simulación arroja ≥ 2 en R. Tampoco vale emitir solo `logmarFinal`/`letraFinal` sin patch ni MQTT de L (no se "espera al próximo turno" para abrir L).
+- **Sub-emisión en las ramas 3/4**: prohibido `siguiente_optotipo` con `acciones: []` o sin `tv`.
+
+### Ejemplos QA
+
+| # | Estado antes (ojo R) | Clasificación | Patch esperado | Acciones | Evento |
+|---|----------------------|---------------|----------------|----------|--------|
+| A | `logmarActual:0.3, letra:H, {0.3:0,…}, usadas:[H]` | correcta H | `{0.3:1,…}`, `logmarActual:0.2`, `letra:O`, `usadas:[H,O]` | `tv O@0.2` | `siguiente_optotipo` |
+| B | `logmarActual:0.2, letra:O, {0.3:1,0.2:0,…}, usadas:[H,O]` | correcta O | `{0.3:1,0.2:1,…}`, `logmarActual:0.1`, `letra:T`, `usadas:[H,O,T]` | `tv T@0.1` | `siguiente_optotipo` |
+| C *(cierre directo)* | `logmarActual:0.2, letra:O, {0.3:1,0.2:1,…}, usadas:[H,O,T,E,…]` | correcta O | `agudeza.R.logmarFinal:0.2`, `letraFinal:O`, `aciertosPorLogmar:{0.3:1,0.2:2,…}`; `ojoActual:"L"`; `agudeza.L` inicializado H@0.3 | `foroptero (R close, L open + RX_L)` + `tv H@0.3` | `cierre_ojo_R_e_inicio_L` |
+| D *(cierre tras `no_ve` intercalado — log 2026-05-19)* | `logmarActual:0.2, letra:E, {0.3:1,0.2:1,0.1:0,0.0:0}, usadas:[H,O,T,E]` | correcta E | igual que C con `letraFinal:E`, `{0.3:1,0.2:2,…}` | igual que C | `cierre_ojo_R_e_inicio_L` |
+
+El ejemplo **D** es idéntico al turno de regresión donde el agente devolvió patch vacío. La simulación correcta es `0.2:1 + 1 = 2 ⇒ cierre`, sin importar que las dos correctas en `0.2` no hayan sido consecutivas (hubo un `no_ve` en `0.1` entre medio).
 
 ## **incorrecta** / **no_ve**
 

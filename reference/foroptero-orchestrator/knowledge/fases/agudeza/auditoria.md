@@ -64,6 +64,21 @@ Simulá `aciertosPorLogmar` **después** del patch.
 - `acciones: []` (o sin `tv`)
 - `logmarActual > 0.0` y contador simulado queda en **1**
 
+### Anti-patrón: patch vacío en `correcta` (regresión log 2026-05-19 turno 5)
+
+**Rechazar** si:
+
+- Clasificación **correcta**
+- `estadoPatch: {}` y/o `acciones: []`
+- `evento ∈ { repregunta_sin_cambio, siguiente_optotipo }` (cualquier evento sin patch ni acciones)
+
+`correccionSugerida` esperada según rama (simulá `aciertosPorLogmar[logmarActual] += 1` sobre `estadoAntes`):
+
+- Simulación **≥ 2** en ojo **R**: exigir patch de cierre R (`logmarFinal`, `letraFinal`, `aciertosPorLogmar` con el contador del logMAR de cierre en ≥ 2), patch L inicial (`logmarActual: 0.3`, `letraActual: "H"`, contadores 0, `letrasUsadas: ["H"]`), `ojoActual: "L"`, `acciones` con foróptero (R close, L open + RX_L de `estadoAntes.rx.L`) y TV H@0.3, `evento: cierre_ojo_R_e_inicio_L`.
+- Simulación **≥ 2** en ojo **L**: exigir `logmarFinal`, `letraFinal` en `agudeza.L`, `fase: "finalizado"`, sin `tv`, `evento: cierre_ojo_L` o `examen_finalizado`.
+- Simulación **= 1** y `logmarActual > 0.0`: exigir bajada de logMAR un paso, letra Sloan no usada, `tv` alineada al patch, `evento: siguiente_optotipo`.
+- Simulación **= 1** y `logmarActual == 0.0`: exigir rotación de letra Sloan no usada, `tv` alineada al patch, `evento: siguiente_optotipo`.
+
 ---
 
 ## Checklist tras **incorrecta** / **no_ve**
