@@ -137,6 +137,8 @@ patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0}
 3. `acciones`: foróptero (L open, R close) + TV H@0.3.
 4. `evento: cierre_ojo_R_e_inicio_L`.
 
+**Atomicidad.** La transición R → L se emite como **una operación atómica** dentro del mismo turno: patch (R cierre con `logmarFinal`/`letraFinal` + L inicializado a H@0.3 con contadores 0 y `letrasUsadas:["H"]` + `ojoActual:"L"`) **+** `evento: "cierre_ojo_R_e_inicio_L"` **+** `acciones` (foróptero R close / L open + RX_L de `estadoAntes.rx.L`, luego TV H@0.3). Está **prohibido** emitir solo el patch (parcial o completo) sin el evento y las acciones, o el evento sin las acciones, o cambiar `ojoActual` sin haber cerrado R con `logmarFinal`/`letraFinal`. Faltar cualquiera de los tres bloques en un mismo JSON invalida la propuesta y el auditor la rechazará.
+
 ### Ejemplo literal (rama 2 en ojo R, post `no_ve` intercalado — regresión log 2026-05-19)
 
 `estadoAntes` (extracto):
@@ -197,6 +199,34 @@ Propuesta esperada del protocolo:
   "razonamientoProtocolo": "Simulación 0.2:1+1=2 ⇒ rama 2 (cierre R). Patch R con logmarFinal/letraFinal y contadores ≥ 2; patch L inicializado a H@0.3; MQTT foróptero (R close, L open + RX_L) + TV H@0.3."
 }
 ```
+
+### Ejemplo de propuesta inválida (regresión log 2026-05-19 turno 5, segunda corrida)
+
+Esta propuesta **debe ser rechazada** por el auditor con anti-patrón "patch parcial en rama 2":
+
+```json
+{
+  "estadoPatch": {
+    "ojoActual": "L",
+    "agudeza": {
+      "R": { "aciertosPorLogmar": {"0.3": 1, "0.2": 2, "0.1": 0, "0.0": 0} }
+    }
+  },
+  "acciones": [],
+  "evento": "siguiente_optotipo",
+  "detalleEvento": {},
+  "razonamientoProtocolo": "Correcta en 0.2; cambio ojo a L."
+}
+```
+
+Motivos de rechazo (deben aparecer **todos** en `violaciones`, ninguno hipotético de otras ramas):
+
+- Faltan `agudeza.R.logmarFinal` y `letraFinal` en el patch.
+- Falta el bloque `agudeza.L` inicializado a `logmarActual:0.3`, `letraActual:"H"`, contadores `0`, `letrasUsadas:["H"]`.
+- `evento` debería ser `"cierre_ojo_R_e_inicio_L"`, no `"siguiente_optotipo"`.
+- `acciones: []` viola la atomicidad: deben incluirse foróptero (R close, L open + RX_L de `estadoAntes.rx.L`) y TV H@0.3.
+
+**Corrección**: reemplazar por el "Ejemplo literal" de arriba.
 
 ---
 

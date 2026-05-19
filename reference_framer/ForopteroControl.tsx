@@ -1,11 +1,388 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+
+// Misma instancia que NEXT_PUBLIC_FOROPTERO_ORCHESTRATOR_URL en la app de voz.
+// Local: http://localhost:3001
+const ORCHESTRATOR_URL = "https://oftalmagentv2-production.up.railway.app"
+
+const API_ESTADO = `${ORCHESTRATOR_URL}/api/estado`
+const API_DETALLE = `${ORCHESTRATOR_URL}/api/examen/detalle`
+const API_MOVIMIENTO = `${ORCHESTRATOR_URL}/api/movimiento`
+
+type AgudezaOjo = {
+    logmarActual?: number | null
+    letraActual?: string | null
+    logmarFinal?: number | null
+    letraFinal?: string | null
+}
+
+type DetalleExamen = {
+    fase?: string
+    ojoActual?: string
+    agudeza?: { R?: AgudezaOjo; L?: AgudezaOjo }
+    iniciado?: number
+    finalizado?: number | null
+    historial?: TurnoHistorial[]
+}
+
+type TurnoHistorial = {
+    ts?: string
+    respuestaPaciente?: string | null
+    confianza?: number
+    modoTurno?: string
+    mensajesEmitidos?: string[]
+    contextoVozEmitido?: string
+    razonamientoInterno?: string
+    interpretacion?: {
+        clasificacion?: string
+        notasInterprete?: string
+        letraElegida?: string | null
+        letrasCandidatas?: string[]
+    }
+    propuestaProtocolo?: {
+        evento?: string
+        razonamientoProtocolo?: string
+        detalleEvento?: { motivo?: string }
+        estadoPatch?: Record<string, unknown>
+        acciones?: AccionDispositivo[]
+    }
+    auditoria?: {
+        aprobado?: boolean
+        violaciones?: string[]
+        correccionSugerida?: string | null
+    }
+    comunicacion?: {
+        razonamientoComunicacion?: string
+        contextoVoz?: string
+    }
+    acciones?: AccionDispositivo[]
+}
+
+type AccionDispositivo = {
+    dispositivo?: string
+    letra?: string
+    logmar?: number
+    config?: { R?: Record<string, unknown>; L?: Record<string, unknown> }
+}
+
+function formatoValor(valor: unknown) {
+    return valor !== null && valor !== undefined ? String(valor) : "—"
+}
+
+function formatoHora(ts?: string) {
+    if (!ts) return "—"
+    try {
+        return new Date(ts).toLocaleTimeString("es-AR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        })
+    } catch {
+        return ts
+    }
+}
+
+function formatearAcciones(acciones?: AccionDispositivo[]) {
+    if (!acciones?.length) return ["(ninguna)"]
+    return acciones.map((a) => {
+        if (a.dispositivo === "tv") {
+            return `tv: ${a.letra ?? "?"} @ logMAR ${a.logmar ?? "?"}`
+        }
+        if (a.dispositivo === "foroptero") {
+            const parts: string[] = []
+            if (a.config?.R) parts.push(`R ${JSON.stringify(a.config.R)}`)
+            if (a.config?.L) parts.push(`L ${JSON.stringify(a.config.L)}`)
+            return `foróptero: ${parts.join(" | ") || "config"}`
+        }
+        return `${a.dispositivo ?? "?"}: ${JSON.stringify(a)}`
+    })
+}
+
+function resumirPatch(patch?: Record<string, unknown>) {
+    if (!patch || Object.keys(patch).length === 0) return "sin cambios"
+    const ag = patch.agudeza as Record<string, AgudezaOjo> | undefined
+    if (!ag) return JSON.stringify(patch)
+    const partes: string[] = []
+    for (const ojo of ["R", "L"]) {
+        const o = ag[ojo]
+        if (!o) continue
+        const bits: string[] = []
+        if (o.logmarActual != null) bits.push(`logMAR ${o.logmarActual}`)
+        if (o.letraActual) bits.push(`letra ${o.letraActual}`)
+        if (o.logmarFinal != null) bits.push(`final ${o.logmarFinal}`)
+        if (bits.length) partes.push(`${ojo}: ${bits.join(", ")}`)
+    }
+    return partes.length ? partes.join(" · ") : JSON.stringify(patch)
+}
+
+function formatoLente(lente: {
+    esfera?: number
+    cilindro?: number
+    angulo?: number
+    occlusion?: string
+} | null) {
+    if (!lente) return "—"
+    return `Esf ${lente.esfera?.toFixed(2)} / Cil ${lente.cilindro?.toFixed(2)} @ ${lente.angulo}° (${lente.occlusion})`
+}
+
+const layout = {
+    display: "flex" as const,
+    gap: 20,
+    alignItems: "flex-start" as const,
+    marginTop: 20,
+}
+
+const miniBox = {
+    flex: 1,
+    border: "1px solid #e0e0e0",
+    padding: 20,
+    borderRadius: 12,
+    background: "#fff",
+}
+
+const btnMini = {
+    padding: "6px 12px",
+    fontSize: 14,
+    margin: "0 6px",
+    borderRadius: 6,
+    border: "1px solid #ccc",
+    background: "#f5f5f5",
+    cursor: "pointer" as const,
+}
+
+const inputAngle = {
+    width: "60px",
+    padding: "6px",
+    borderRadius: 6,
+    border: "1px solid #aaa",
+}
+
+const selectStyle = {
+    width: "100%",
+    padding: "8px",
+    marginTop: 4,
+    borderRadius: 6,
+    border: "1px solid #aaa",
+}
+
+const buttonColumn = {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    gap: 10,
+    width: 140,
+}
+
+const bigBtn = {
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    cursor: "pointer" as const,
+    border: "none",
+}
+
+const seccionAgente = {
+    marginTop: 10,
+    padding: 10,
+    background: "#f9fafb",
+    borderRadius: 8,
+    fontSize: 12,
+    lineHeight: 1.5,
+}
+
+const preRazonamiento = {
+    margin: "10px 0 0",
+    padding: 10,
+    background: "#f3f4f6",
+    borderRadius: 8,
+    fontSize: 11,
+    fontFamily: "ui-monospace, monospace",
+    whiteSpace: "pre-wrap" as const,
+    wordBreak: "break-word" as const,
+    lineHeight: 1.45,
+}
+
+function TurnoQACard({
+    turno,
+    indice,
+}: {
+    turno: TurnoHistorial
+    indice: number
+}) {
+    const rechazado = turno.auditoria?.aprobado === false
+    const acciones = turno.acciones ?? turno.propuestaProtocolo?.acciones
+
+    return (
+        <div
+            style={{
+                marginBottom: 14,
+                padding: 14,
+                borderRadius: 10,
+                border: rechazado
+                    ? "2px solid #ea580c"
+                    : "1px solid #e5e7eb",
+                background: rechazado ? "#fff7ed" : "#fff",
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                    marginBottom: 8,
+                }}
+            >
+                <strong style={{ fontSize: 14 }}>Turno {indice + 1}</strong>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>
+                    {formatoHora(turno.ts)}
+                </span>
+                {turno.modoTurno && (
+                    <span
+                        style={{
+                            fontSize: 11,
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            background: "#e0e7ff",
+                            color: "#3730a3",
+                        }}
+                    >
+                        {turno.modoTurno}
+                    </span>
+                )}
+                <span
+                    style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        background: rechazado ? "#fecaca" : "#d1fae5",
+                        color: rechazado ? "#991b1b" : "#065f46",
+                        fontWeight: 600,
+                    }}
+                >
+                    Auditor: {rechazado ? "Rechazado" : "Aprobado"}
+                </span>
+            </div>
+
+            <div style={{ fontSize: 13, marginBottom: 6 }}>
+                <strong>Paciente:</strong>{" "}
+                {turno.respuestaPaciente?.trim()
+                    ? `"${turno.respuestaPaciente}"`
+                    : "(sin respuesta — bootstrap / continuar)"}
+                {typeof turno.confianza === "number" && (
+                    <span style={{ color: "#6b7280" }}>
+                        {" "}
+                        · confianza {turno.confianza}
+                    </span>
+                )}
+            </div>
+
+            <div style={{ fontSize: 13, marginBottom: 8 }}>
+                <strong>Al paciente:</strong>{" "}
+                {(turno.mensajesEmitidos ?? []).join(" · ") || "—"}
+                {turno.contextoVozEmitido && (
+                    <span style={{ color: "#6b7280" }}>
+                        {" "}
+                        → {turno.contextoVozEmitido}
+                    </span>
+                )}
+            </div>
+
+            {turno.razonamientoInterno && (
+                <div>
+                    <strong style={{ fontSize: 12 }}>
+                        Razonamiento (concatenado)
+                    </strong>
+                    <pre style={preRazonamiento}>{turno.razonamientoInterno}</pre>
+                </div>
+            )}
+
+            <div style={seccionAgente}>
+                <strong>Intérprete</strong>
+                <div>
+                    clasificación:{" "}
+                    {formatoValor(turno.interpretacion?.clasificacion)}
+                </div>
+                {turno.interpretacion?.letraElegida != null && (
+                    <div>
+                        letra elegida: {turno.interpretacion.letraElegida || "—"}
+                    </div>
+                )}
+                {(turno.interpretacion?.letrasCandidatas?.length ?? 0) > 0 && (
+                    <div>
+                        candidatas:{" "}
+                        {turno.interpretacion!.letrasCandidatas!.join(", ")}
+                    </div>
+                )}
+                {turno.interpretacion?.notasInterprete && (
+                    <div style={{ marginTop: 4, color: "#4b5563" }}>
+                        {turno.interpretacion.notasInterprete}
+                    </div>
+                )}
+            </div>
+
+            <div style={seccionAgente}>
+                <strong>Protocolo</strong>
+                <div>evento: {formatoValor(turno.propuestaProtocolo?.evento)}</div>
+                {turno.propuestaProtocolo?.detalleEvento?.motivo && (
+                    <div>
+                        motivo: {turno.propuestaProtocolo.detalleEvento.motivo}
+                    </div>
+                )}
+                <div>
+                    patch: {resumirPatch(turno.propuestaProtocolo?.estadoPatch)}
+                </div>
+                {turno.propuestaProtocolo?.razonamientoProtocolo && (
+                    <div style={{ marginTop: 4, color: "#4b5563" }}>
+                        {turno.propuestaProtocolo.razonamientoProtocolo}
+                    </div>
+                )}
+            </div>
+
+            <div style={seccionAgente}>
+                <strong>Auditor</strong>
+                <div>aprobado: {turno.auditoria?.aprobado ? "sí" : "no"}</div>
+                {(turno.auditoria?.violaciones?.length ?? 0) > 0 && (
+                    <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                        {turno.auditoria!.violaciones!.map((v, i) => (
+                            <li key={i}>{v}</li>
+                        ))}
+                    </ul>
+                )}
+                {turno.auditoria?.correccionSugerida && (
+                    <div style={{ marginTop: 4, color: "#b45309" }}>
+                        sugerencia: {turno.auditoria.correccionSugerida}
+                    </div>
+                )}
+            </div>
+
+            <div style={seccionAgente}>
+                <strong>Comunicación</strong>
+                {turno.comunicacion?.razonamientoComunicacion ? (
+                    <div style={{ marginTop: 4, color: "#4b5563" }}>
+                        {turno.comunicacion.razonamientoComunicacion}
+                    </div>
+                ) : (
+                    <div>—</div>
+                )}
+            </div>
+
+            <div style={{ marginTop: 10, fontSize: 12 }}>
+                <strong>Acciones</strong>
+                <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                    {formatearAcciones(acciones).map((linea, i) => (
+                        <li
+                            key={i}
+                            style={{ fontFamily: "ui-monospace, monospace" }}
+                        >
+                            {linea}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    )
+}
 
 export function ForopteroControl() {
-    const API_ESTADO = "https://foroptero-production.up.railway.app/api/estado"
-    const API_REGISTRO_CSV =
-        "https://foroptero-production.up.railway.app/api/examen/registro.csv"
-
-    // ---------------- Estados del panel ----------------
     const [rEsfera, setREsfera] = useState(0)
     const [rCilindro, setRCilindro] = useState(0)
     const [rAngulo, setRAngulo] = useState(0)
@@ -18,21 +395,29 @@ export function ForopteroControl() {
 
     const [status, setStatus] = useState("")
 
-    // ---------------- Estado del foróptero ----------------
     const [estadoForoptero, setEstadoForoptero] = useState("...")
-    const [lentesR, setLentesR] = useState<any>(null)
-    const [lentesL, setLentesL] = useState<any>(null)
+    const [lentesR, setLentesR] = useState<{
+        esfera?: number
+        cilindro?: number
+        angulo?: number
+        occlusion?: string
+    } | null>(null)
+    const [lentesL, setLentesL] = useState<{
+        esfera?: number
+        cilindro?: number
+        angulo?: number
+        occlusion?: string
+    } | null>(null)
 
-    // ---------------- Estado del examen ----------------
-    const [valoresIniciales, setValoresIniciales] = useState<any>(null)
-    const [valoresRecalculados, setValoresRecalculados] = useState<any>(null)
-    const [tests, setTests] = useState<any[]>([])
-    const [resultados, setResultados] = useState<any>(null)
-    const [estadoActual, setEstadoActual] = useState<any>(null)
-    const [timestamps, setTimestamps] = useState<any>(null)
-    const [modoExamen, setModoExamen] = useState("normal")
+    const [detalle, setDetalle] = useState<DetalleExamen | null>(null)
+    const [historial, setHistorial] = useState<TurnoHistorial[]>([])
+    const [examenActivo, setExamenActivo] = useState(false)
+    const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
+    const [seguirUltimoTurno, setSeguirUltimoTurno] = useState(true)
 
-    // Polling cada 1.5 segundos
+    const historialScrollRef = useRef<HTMLDivElement>(null)
+    const historialLenRef = useRef(0)
+
     useEffect(() => {
         let active = true
 
@@ -40,11 +425,8 @@ export function ForopteroControl() {
             try {
                 const res = await fetch(API_ESTADO)
                 const data = await res.json()
-
                 if (!active) return
-
                 setEstadoForoptero(data.status || "...")
-
                 setLentesR(data.R || null)
                 setLentesL(data.L || null)
             } catch (err) {
@@ -54,176 +436,98 @@ export function ForopteroControl() {
 
         fetchEstado()
         const interval = setInterval(fetchEstado, 1500)
-
         return () => {
             active = false
             clearInterval(interval)
         }
     }, [])
 
-    // Polling de detalle del examen cada 1.5 segundos
     useEffect(() => {
         let active = true
 
         async function fetchDetalleExamen() {
             try {
-                const res = await fetch(
-                    "https://foroptero-production.up.railway.app/api/examen/detalle",
-                    {
-                        method: "GET",
-                    }
-                )
+                const res = await fetch(API_DETALLE, { method: "GET" })
                 const data = await res.json()
-
                 if (!active) return
 
-                if (data.ok && data.detalle) {
-                    setModoExamen(data.detalle.modo || "normal")
-                    setValoresIniciales(data.detalle.valoresIniciales || null)
-                    setValoresRecalculados(
-                        data.detalle.valoresRecalculados || null
+                if (!res.ok || !data.ok) {
+                    setExamenActivo(false)
+                    setDetalle(null)
+                    setHistorial([])
+                    setErrorDetalle(
+                        data?.error || "Sin examen activo en el orquestador"
                     )
-                    setTests(data.detalle.tests || [])
-                    setResultados(data.detalle.resultados || null)
-                    setEstadoActual(data.detalle.estadoActual || null)
-                    setTimestamps(data.detalle.timestamps || null)
+                    return
                 }
+
+                const d = data.detalle as DetalleExamen
+                setDetalle(d)
+                setHistorial(d.historial ?? [])
+                setExamenActivo(true)
+                setErrorDetalle(null)
             } catch (err) {
                 console.error("Error obteniendo detalle del examen:", err)
+                if (active) {
+                    setErrorDetalle("Error de red al consultar el orquestador")
+                }
             }
         }
 
         fetchDetalleExamen()
         const interval = setInterval(fetchDetalleExamen, 1500)
-
         return () => {
             active = false
             clearInterval(interval)
         }
     }, [])
 
-    const formatoLente = (lente: any) => {
-        if (!lente) return "—"
-        return `Esf ${lente.esfera?.toFixed(2)} / Cil ${lente.cilindro?.toFixed(2)} @ ${lente.angulo}° (${lente.occlusion})`
-    }
-
-    const formatoValor = (valor: any) => {
-        return valor !== null && valor !== undefined ? valor : "N/A"
-    }
-
-    const formatearNombreTest = (tipo: string, ojo: string) => {
-        const nombres: { [key: string]: string } = {
-            esferico_grueso: "Esférico Grueso",
-            esferico_fino: "Esférico Fino",
-            cilindrico: "Cilíndrico",
-            agudeza_alcanzada: "Agudeza Alcanzada",
-            binocular: "Binocular",
+    useEffect(() => {
+        const len = historial.length
+        if (!seguirUltimoTurno || len === 0) {
+            historialLenRef.current = len
+            return
         }
-        const nombre = nombres[tipo] || tipo
-        return `${nombre} (${ojo})`
-    }
-
-    const formatoRxBinocular = (lente: any) => {
-        if (!lente || typeof lente !== "object") return formatoValor(lente)
-        const { esfera, cilindro, angulo } = lente
-        if (esfera == null) return "N/A"
-        return `Esf ${Number(esfera).toFixed(2)} / Cil ${cilindro != null ? Number(cilindro).toFixed(2) : "—"} @ ${angulo ?? 0}°`
-    }
-
-    const formatearValorTest = (test: any) => {
-        if (test.tipo === "binocular") {
-            return `R: ${formatoRxBinocular(test.resultadoR)} / L: ${formatoRxBinocular(test.resultadoL)}`
+        if (len > historialLenRef.current && historialScrollRef.current) {
+            historialScrollRef.current.scrollTop =
+                historialScrollRef.current.scrollHeight
         }
-        return formatoValor(test.resultado)
-    }
+        historialLenRef.current = len
+    }, [historial, seguirUltimoTurno])
 
-    // ---------------- Funciones ----------------
-    function ajustar(setter, actual, delta) {
+    function ajustar(
+        setter: (v: number) => void,
+        actual: number,
+        delta: number
+    ) {
         setter(parseFloat((actual + delta).toFixed(2)))
     }
 
     async function setHome() {
         try {
-            const res = await fetch(
-                "https://foroptero-production.up.railway.app/api/movimiento",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        accion: "home",
-                        R: {
-                            esfera: rEsfera,
-                            cilindro: rCilindro,
-                            angulo: rAngulo,
-                            occlusion: rOcclusion,
-                        },
-                        L: {
-                            esfera: lEsfera,
-                            cilindro: lCilindro,
-                            angulo: lAngulo,
-                            occlusion: lOcclusion,
-                        },
-                    }),
-                }
-            )
-
+            const res = await fetch(API_MOVIMIENTO, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    accion: "home",
+                    R: {
+                        esfera: rEsfera,
+                        cilindro: rCilindro,
+                        angulo: rAngulo,
+                        occlusion: rOcclusion,
+                    },
+                    L: {
+                        esfera: lEsfera,
+                        cilindro: lCilindro,
+                        angulo: lAngulo,
+                        occlusion: lOcclusion,
+                    },
+                }),
+            })
             const data = await res.json()
             setStatus(JSON.stringify(data, null, 2))
         } catch {
             setStatus("⚠️ Error enviando comando home")
-        }
-    }
-
-    async function reiniciarExamen(modo = "normal") {
-        try {
-            setStatus(`Reiniciando examen en modo ${modo}...`)
-            const res = await fetch(
-                "https://foroptero-production.up.railway.app/api/examen/reiniciar",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ modo }),
-                }
-            )
-
-            const data = await res.json()
-            if (!res.ok || !data?.ok) {
-                setStatus(
-                    `⚠️ Error reiniciando examen: ${data?.error || "Error desconocido"}`
-                )
-                return
-            }
-
-            setStatus(`Examen reiniciado en modo ${modo}`)
-        } catch {
-            setStatus("⚠️ Error reiniciando examen")
-        }
-    }
-
-    async function descargarRegistroCsv() {
-        try {
-            setStatus("Descargando registro CSV…")
-            const res = await fetch(API_REGISTRO_CSV, { method: "GET" })
-            if (!res.ok) {
-                setStatus(`⚠️ Error al obtener CSV (${res.status})`)
-                return
-            }
-            const blob = await res.blob()
-            const cd = res.headers.get("Content-Disposition")
-            let filename = "examen-registro.csv"
-            const m = cd?.match(/filename="([^"]+)"/)
-            if (m?.[1]) filename = m[1]
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = filename
-            document.body.appendChild(a)
-            a.click()
-            a.remove()
-            URL.revokeObjectURL(url)
-            setStatus("CSV del examen descargado")
-        } catch {
-            setStatus("⚠️ Error descargando CSV")
         }
     }
 
@@ -241,28 +545,25 @@ export function ForopteroControl() {
 
     async function run() {
         try {
-            const res = await fetch(
-                "https://foroptero-production.up.railway.app/api/movimiento",
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        accion: "movimiento",
-                        R: {
-                            esfera: rEsfera,
-                            cilindro: rCilindro,
-                            angulo: rAngulo,
-                            occlusion: rOcclusion,
-                        },
-                        L: {
-                            esfera: lEsfera,
-                            cilindro: lCilindro,
-                            angulo: lAngulo,
-                            occlusion: lOcclusion,
-                        },
-                    }),
-                }
-            )
+            const res = await fetch(API_MOVIMIENTO, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    accion: "movimiento",
+                    R: {
+                        esfera: rEsfera,
+                        cilindro: rCilindro,
+                        angulo: rAngulo,
+                        occlusion: rOcclusion,
+                    },
+                    L: {
+                        esfera: lEsfera,
+                        cilindro: lCilindro,
+                        angulo: lAngulo,
+                        occlusion: lOcclusion,
+                    },
+                }),
+            })
             const data = await res.json()
             setStatus(JSON.stringify(data, null, 2))
         } catch {
@@ -270,106 +571,65 @@ export function ForopteroControl() {
         }
     }
 
-    // ---------------- Estilos UI ----------------
-    const layout = {
-        display: "flex",
-        gap: 20,
-        alignItems: "flex-start",
-        marginTop: 20,
-    }
+    const ojo = detalle?.ojoActual ?? "—"
+    const agActivo = detalle?.agudeza?.[ojo as "R" | "L"]
+    const agR = detalle?.agudeza?.R
+    const agL = detalle?.agudeza?.L
 
-    const miniBox = {
-        flex: 1,
-        border: "1px solid #e0e0e0",
-        padding: 20,
-        borderRadius: 12,
-        background: "#fff",
-    }
-
-    const btnMini = {
-        padding: "6px 12px",
-        fontSize: 14,
-        margin: "0 6px",
-        borderRadius: 6,
-        border: "1px solid #ccc",
-        background: "#f5f5f5",
-    }
-
-    const inputAngle = {
-        width: "60px",
-        padding: "6px",
-        borderRadius: 6,
-        border: "1px solid #aaa",
-    }
-
-    const selectStyle = {
-        width: "100%",
-        padding: "8px",
-        marginTop: 4,
-        borderRadius: 6,
-        border: "1px solid #aaa",
-    }
-
-    const buttonColumn = {
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        width: 140,
-    }
-
-    const bigBtn = {
-        padding: 12,
-        borderRadius: 8,
-        fontSize: 16,
-        cursor: "pointer",
-        border: "none",
-    }
-
-    // ---------------- Render ----------------
     return (
         <div
             style={{
                 padding: 20,
                 fontFamily: "Inter, sans-serif",
                 position: "relative",
+                maxWidth: 1200,
             }}
         >
-            {/* -------- Estado arriba a la derecha -------- */}
             <div
                 style={{
                     position: "absolute",
                     top: 10,
-                    right: 180, // <<< MUEVE EL ESTADO MÁS A LA IZQUIERDA
+                    right: 20,
                     textAlign: "right",
                     fontSize: 15,
                     padding: "6px 10px",
                     borderRadius: 8,
-                    background: "rgba(255,255,255,0.85)", // <<< BLOQUE LEGIBLE SIN SOLAPAR
+                    background: "rgba(255,255,255,0.9)",
                     backdropFilter: "blur(4px)",
-                    color: estadoForoptero === "ready" ? "#0f0" : "#ffb400",
+                    color: estadoForoptero === "ready" ? "#15803d" : "#ca8a04",
                     fontFamily: "monospace",
                     lineHeight: 1.3,
                     zIndex: 999,
                 }}
             >
-                Estado: {estadoForoptero}
+                MQTT: {estadoForoptero}
                 {estadoForoptero === "ready" && (
-                    <div style={{ color: "#999", fontSize: 13, marginTop: 6 }}>
-                        &lt;R&gt; {formatoLente(lentesR)} <br />
-                        &lt;L&gt; {formatoLente(lentesL)}
+                    <div style={{ color: "#6b7280", fontSize: 13, marginTop: 6 }}>
+                        R {formatoLente(lentesR)}
+                        <br />
+                        L {formatoLente(lentesL)}
                     </div>
                 )}
             </div>
 
-            <h2 style={{ marginBottom: 50 }}>Panel de Control del Foróptero</h2>
+            <h2 style={{ marginBottom: 8 }}>Panel de Control del Foróptero</h2>
+            <p
+                style={{
+                    margin: "0 0 24px",
+                    fontSize: 13,
+                    color: "#6b7280",
+                    maxWidth: 720,
+                }}
+            >
+                Observación QA del pipeline multi-agente. El examen se inicia
+                desde la app de voz (mismo orquestador). Este panel no inicia ni
+                reinicia exámenes.
+            </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {/* -------- Primera fila: Controles -------- */}
                 <div style={layout}>
-                    {/* -------- R -------- */}
                     <div style={miniBox}>
-                        <h3>Ojo Derecho (R)</h3>
-
+                        <h3 style={{ margin: 0 }}>Ojo Derecho (R)</h3>
                         <div style={{ marginTop: 10 }}>Esfera</div>
                         <button
                             style={btnMini}
@@ -380,11 +640,10 @@ export function ForopteroControl() {
                         <span>{rEsfera.toFixed(2)}</span>
                         <button
                             style={btnMini}
-                            onClick={() => ajustar(setREsfera, rEsfera, +0.25)}
+                            onClick={() => ajustar(setREsfera, rEsfera, 0.25)}
                         >
                             +
                         </button>
-
                         <div style={{ marginTop: 10 }}>Cilindro</div>
                         <button
                             style={btnMini}
@@ -398,22 +657,20 @@ export function ForopteroControl() {
                         <button
                             style={btnMini}
                             onClick={() =>
-                                ajustar(setRCilindro, rCilindro, +0.25)
+                                ajustar(setRCilindro, rCilindro, 0.25)
                             }
                         >
                             +
                         </button>
-
                         <div style={{ marginTop: 10 }}>Ángulo</div>
                         <input
                             type="number"
                             value={rAngulo}
                             onChange={(e) =>
-                                setRAngulo(parseInt(e.target.value))
+                                setRAngulo(parseInt(e.target.value, 10) || 0)
                             }
                             style={inputAngle}
                         />
-
                         <div style={{ marginTop: 10 }}>Oclusión</div>
                         <select
                             style={selectStyle}
@@ -425,10 +682,8 @@ export function ForopteroControl() {
                         </select>
                     </div>
 
-                    {/* -------- L -------- */}
                     <div style={miniBox}>
-                        <h3>Ojo Izquierdo (L)</h3>
-
+                        <h3 style={{ margin: 0 }}>Ojo Izquierdo (L)</h3>
                         <div style={{ marginTop: 10 }}>Esfera</div>
                         <button
                             style={btnMini}
@@ -439,11 +694,10 @@ export function ForopteroControl() {
                         <span>{lEsfera.toFixed(2)}</span>
                         <button
                             style={btnMini}
-                            onClick={() => ajustar(setLEsfera, lEsfera, +0.25)}
+                            onClick={() => ajustar(setLEsfera, lEsfera, 0.25)}
                         >
                             +
                         </button>
-
                         <div style={{ marginTop: 10 }}>Cilindro</div>
                         <button
                             style={btnMini}
@@ -457,22 +711,20 @@ export function ForopteroControl() {
                         <button
                             style={btnMini}
                             onClick={() =>
-                                ajustar(setLCilindro, lCilindro, +0.25)
+                                ajustar(setLCilindro, lCilindro, 0.25)
                             }
                         >
                             +
                         </button>
-
                         <div style={{ marginTop: 10 }}>Ángulo</div>
                         <input
                             type="number"
                             value={lAngulo}
                             onChange={(e) =>
-                                setLAngulo(parseInt(e.target.value))
+                                setLAngulo(parseInt(e.target.value, 10) || 0)
                             }
                             style={inputAngle}
                         />
-
                         <div style={{ marginTop: 10 }}>Oclusión</div>
                         <select
                             style={selectStyle}
@@ -484,7 +736,6 @@ export function ForopteroControl() {
                         </select>
                     </div>
 
-                    {/* -------- Botones -------- */}
                     <div style={buttonColumn}>
                         <button
                             style={{
@@ -496,7 +747,6 @@ export function ForopteroControl() {
                         >
                             Run
                         </button>
-
                         <button
                             style={{
                                 ...bigBtn,
@@ -507,7 +757,6 @@ export function ForopteroControl() {
                         >
                             Clear
                         </button>
-
                         <button
                             style={{
                                 ...bigBtn,
@@ -518,266 +767,142 @@ export function ForopteroControl() {
                         >
                             Set Home
                         </button>
-
-                        <button
-                            style={{
-                                ...bigBtn,
-                                background: "#444",
-                                color: "#fff",
-                            }}
-                            onClick={() => reiniciarExamen("normal")}
-                        >
-                            Nuevo examen
-                        </button>
-
-                        <button
-                            style={{
-                                ...bigBtn,
-                                background: "#7c3aed",
-                                color: "#fff",
-                            }}
-                            onClick={() => reiniciarExamen("testesf")}
-                        >
-                            Prueba ESF
-                        </button>
-
-                        <button
-                            style={{
-                                ...bigBtn,
-                                background: "#9333ea",
-                                color: "#fff",
-                            }}
-                            onClick={() => reiniciarExamen("testcil")}
-                        >
-                            Prueba CIL
-                        </button>
-
-                        <button
-                            style={{
-                                ...bigBtn,
-                                background: "#0d9488",
-                                color: "#fff",
-                            }}
-                            onClick={() => reiniciarExamen("testbin")}
-                        >
-                            Prueba BIN
-                        </button>
-
-                        <button
-                            style={{
-                                ...bigBtn,
-                                background: "#15803d",
-                                color: "#fff",
-                            }}
-                            type="button"
-                            onClick={() => descargarRegistroCsv()}
-                        >
-                            Descargar CSV registro
-                        </button>
                     </div>
                 </div>
 
-                {/* -------- Segunda fila: Información del examen -------- */}
-                <div style={layout}>
-                    {/* -------- Card Valores Iniciales/Recalculados -------- */}
-                    <div style={miniBox}>
-                        <h3>Valores del Examen</h3>
-
-                        <div style={{ marginTop: 15 }}>
-                            <h4 style={{ fontSize: 14, marginBottom: 8 }}>
-                                Valores Iniciales
-                            </h4>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    gap: 20,
-                                    marginBottom: 15,
-                                }}
-                            >
-                                <div style={{ flex: 1 }}>
-                                    <strong>Ojo R:</strong>
-                                    <div style={{ fontSize: 13, marginTop: 4 }}>
-                                        Esf: {formatoValor(
-                                            valoresIniciales?.R?.esfera
-                                        )}
-                                        <br />
-                                        Cil: {formatoValor(
-                                            valoresIniciales?.R?.cilindro
-                                        )}
-                                        <br />
-                                        Ángulo: {formatoValor(
-                                            valoresIniciales?.R?.angulo
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <strong>Ojo L:</strong>
-                                    <div style={{ fontSize: 13, marginTop: 4 }}>
-                                        Esf: {formatoValor(
-                                            valoresIniciales?.L?.esfera
-                                        )}
-                                        <br />
-                                        Cil: {formatoValor(
-                                            valoresIniciales?.L?.cilindro
-                                        )}
-                                        <br />
-                                        Ángulo: {formatoValor(
-                                            valoresIniciales?.L?.angulo
-                                        )}
-                                    </div>
-                                </div>
+                <div
+                    style={{
+                        ...miniBox,
+                        flex: "none",
+                        width: "100%",
+                        boxSizing: "border-box",
+                    }}
+                >
+                    <h3 style={{ margin: "0 0 12px" }}>Examen en curso (QA)</h3>
+                    {!examenActivo ? (
+                        <p style={{ margin: 0, fontSize: 14, color: "#b45309" }}>
+                            {errorDetalle ||
+                                "Sin examen activo — iniciá desde la app de voz"}
+                        </p>
+                    ) : (
+                        <div style={{ fontSize: 14, lineHeight: 1.7 }}>
+                            <div>
+                                <strong>Fase:</strong> {formatoValor(detalle?.fase)}
+                                {detalle?.fase === "finalizado" && (
+                                    <span style={{ color: "#15803d" }}>
+                                        {" "}
+                                        · finalizado
+                                    </span>
+                                )}
                             </div>
-                        </div>
-
-                        <div style={{ marginTop: 15 }}>
-                            <h4 style={{ fontSize: 14, marginBottom: 8 }}>
-                                Valores Recalculados
-                            </h4>
-                            <div style={{ display: "flex", gap: 20 }}>
-                                <div style={{ flex: 1 }}>
-                                    <strong>Ojo R:</strong>
-                                    <div style={{ fontSize: 13, marginTop: 4 }}>
-                                        Esf: {formatoValor(
-                                            valoresRecalculados?.R?.esfera
-                                        )}
-                                        <br />
-                                        Cil: {formatoValor(
-                                            valoresRecalculados?.R?.cilindro
-                                        )}
-                                        <br />
-                                        Ángulo: {formatoValor(
-                                            valoresRecalculados?.R?.angulo
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <strong>Ojo L:</strong>
-                                    <div style={{ fontSize: 13, marginTop: 4 }}>
-                                        Esf: {formatoValor(
-                                            valoresRecalculados?.L?.esfera
-                                        )}
-                                        <br />
-                                        Cil: {formatoValor(
-                                            valoresRecalculados?.L?.cilindro
-                                        )}
-                                        <br />
-                                        Ángulo: {formatoValor(
-                                            valoresRecalculados?.L?.angulo
-                                        )}
-                                    </div>
-                                </div>
+                            <div>
+                                <strong>Ojo activo:</strong> {ojo}
+                                {" · "}
+                                <strong>logMAR:</strong>{" "}
+                                {formatoValor(agActivo?.logmarActual)}
+                                {" · "}
+                                <strong>Letra:</strong>{" "}
+                                {formatoValor(agActivo?.letraActual)}
                             </div>
-                        </div>
-                    </div>
-
-                    {/* -------- Card Estado del Examen y Tests -------- */}
-                    <div style={miniBox}>
-                        <h3>Estado del Examen</h3>
-
-                        <div style={{ marginTop: 15 }}>
-                            <div style={{ marginBottom: 10 }}>
-                                <strong>Estado:</strong>{" "}
-                                {timestamps?.finalizado === null
-                                    ? "En curso"
-                                    : "Finalizado"}
-                            </div>
-                            {estadoActual && (
-                                <div style={{ marginBottom: 10, fontSize: 13 }}>
-                                    <div>
-                                        <strong>Modo:</strong> {modoExamen || "normal"}
-                                    </div>
-                                    <div>
-                                        <strong>Etapa:</strong>{" "}
-                                        {estadoActual.testActual?.tipo || "N/A"}
-                                    </div>
-                                    <div style={{ marginTop: 4 }}>
-                                        <strong>Ojo Actual:</strong>{" "}
-                                        {estadoActual.testActual?.ojo || "N/A"}
-                                    </div>
+                            {detalle?.iniciado != null && (
+                                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                                    sesión iniciada:{" "}
+                                    {new Date(detalle.iniciado).toLocaleString(
+                                        "es-AR"
+                                    )}
                                 </div>
                             )}
+                            <div style={{ marginTop: 8, fontSize: 13 }}>
+                                <strong>R final:</strong>{" "}
+                                {agR?.logmarFinal != null
+                                    ? `${agR.logmarFinal} (${formatoValor(agR.letraFinal)})`
+                                    : "—"}
+                                {" · "}
+                                <strong>L final:</strong>{" "}
+                                {agL?.logmarFinal != null
+                                    ? `${agL.logmarFinal} (${formatoValor(agL.letraFinal)})`
+                                    : "—"}
+                            </div>
                         </div>
-
-                        <div style={{ marginTop: 15 }}>
-                            <h4 style={{ fontSize: 14, marginBottom: 8 }}>
-                                Tests Realizados
-                            </h4>
-                            {tests && tests.length > 0 ? (
-                                <table
-                                    style={{
-                                        width: "100%",
-                                        borderCollapse: "collapse",
-                                        fontSize: 12,
-                                    }}
-                                >
-                                    <thead>
-                                        <tr
-                                            style={{
-                                                borderBottom:
-                                                    "1px solid #e0e0e0",
-                                            }}
-                                        >
-                                            <th
-                                                style={{
-                                                    textAlign: "left",
-                                                    padding: "6px 4px",
-                                                }}
-                                            >
-                                                Test
-                                            </th>
-                                            <th
-                                                style={{
-                                                    textAlign: "left",
-                                                    padding: "6px 4px",
-                                                }}
-                                            >
-                                                Valor
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {[...tests]
-                                            .sort((a: any, b: any) => a.indice - b.indice)
-                                            .map((test: any) => (
-                                                <tr
-                                                    key={test.indice}
-                                                    style={{
-                                                        borderBottom:
-                                                            "1px solid #f0f0f0",
-                                                    }}
-                                                >
-                                                    <td
-                                                        style={{
-                                                            padding: "6px 4px",
-                                                        }}
-                                                    >
-                                                        {formatearNombreTest(
-                                                            test.tipo,
-                                                            test.ojo
-                                                        )}
-                                                    </td>
-                                                    <td
-                                                        style={{
-                                                            padding: "6px 4px",
-                                                        }}
-                                                    >
-                                                        {formatearValorTest(test)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div style={{ fontSize: 13, color: "#999" }}>
-                                    No hay tests realizados
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* -------- Columna vacía para mantener alineación -------- */}
-                    <div style={buttonColumn}></div>
+                    )}
                 </div>
+
+                <div
+                    style={{
+                        ...miniBox,
+                        flex: "none",
+                        width: "100%",
+                        boxSizing: "border-box",
+                    }}
+                >
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 12,
+                            flexWrap: "wrap",
+                            gap: 8,
+                        }}
+                    >
+                        <h3 style={{ margin: 0 }}>
+                            Trazabilidad por turno ({historial.length})
+                        </h3>
+                        <label
+                            style={{
+                                fontSize: 13,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                cursor: "pointer",
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={seguirUltimoTurno}
+                                onChange={(e) =>
+                                    setSeguirUltimoTurno(e.target.checked)
+                                }
+                            />
+                            Seguir último turno
+                        </label>
+                    </div>
+
+                    <div
+                        ref={historialScrollRef}
+                        style={{
+                            maxHeight: "50vh",
+                            overflowY: "auto",
+                            paddingRight: 4,
+                        }}
+                    >
+                        {historial.length === 0 ? (
+                            <p style={{ fontSize: 13, color: "#9ca3af" }}>
+                                {examenActivo
+                                    ? "Aún no hay turnos registrados."
+                                    : "Iniciá un examen desde la voz para ver la traza."}
+                            </p>
+                        ) : (
+                            historial.map((turno, i) => (
+                                <TurnoQACard key={turno.ts ?? i} turno={turno} indice={i} />
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {status && (
+                    <pre
+                        style={{
+                            fontSize: 11,
+                            background: "#f3f4f6",
+                            padding: 10,
+                            borderRadius: 8,
+                            overflow: "auto",
+                        }}
+                    >
+                        {status}
+                    </pre>
+                )}
             </div>
         </div>
     )

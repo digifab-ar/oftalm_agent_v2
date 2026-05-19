@@ -48,6 +48,8 @@ Validar patch + acciones según *Inicio del test por ojo* en **protocolo-estado.
 
 Simulá `aciertosPorLogmar` **después** del patch.
 
+**Selección de fila (obligatoria).** Después de simular `aciertosPorLogmar[logmarActual] + 1`, aplicá **una sola** fila del cuadro siguiente: la que coincida con el contador simulado. Las otras filas **no son violaciones hipotéticas** y deben quedar **fuera** del listado `violaciones`. Si la simulación da `≥ 2`, **prohibido** citar como violación las reglas de las ramas `= 1` (p. ej. "debe incluir `tv` para `siguiente_optotipo`"); y viceversa. Mezclar reglas de ramas distintas en `violaciones` produce feedback contradictorio para el protocolo en el reintento (regresión log 2026-05-19 turno 5, segunda corrida).
+
 | Condición post-simulación | Debe cumplirse |
 |---------------------------|----------------|
 | Contador del `logmarActual` **≥ 2** | `logmarFinal` + `letraFinal` en ese ojo; **sin** `tv` para seguir en ese ojo. Ojo **R** → `evento: cierre_ojo_R_e_inicio_L` + foróptero + TV H@0.3 para L en el **mismo** turno. |
@@ -78,6 +80,42 @@ Simulá `aciertosPorLogmar` **después** del patch.
 - Simulación **≥ 2** en ojo **L**: exigir `logmarFinal`, `letraFinal` en `agudeza.L`, `fase: "finalizado"`, sin `tv`, `evento: cierre_ojo_L` o `examen_finalizado`.
 - Simulación **= 1** y `logmarActual > 0.0`: exigir bajada de logMAR un paso, letra Sloan no usada, `tv` alineada al patch, `evento: siguiente_optotipo`.
 - Simulación **= 1** y `logmarActual == 0.0`: exigir rotación de letra Sloan no usada, `tv` alineada al patch, `evento: siguiente_optotipo`.
+
+### Anti-patrón: patch parcial en rama 2 (regresión log 2026-05-19 turno 5, segunda corrida)
+
+**Rechazar** si:
+
+- Clasificación **correcta**
+- El patch **toca** `ojoActual` (lo cambia a `"L"`) **o** incrementa `aciertosPorLogmar[logmarActual]` a un valor ≥ 2 en ojo R
+- Y **falta cualquiera** de los siguientes en el **mismo** JSON:
+  - `agudeza.R.logmarFinal` + `letraFinal` en `estadoPatch`
+  - `agudeza.L` inicializado en `estadoPatch` a `logmarActual: 0.3`, `letraActual: "H"`, `aciertosPorLogmar: {"0.3":0,"0.2":0,"0.1":0,"0.0":0}`, `letrasUsadas: ["H"]`
+  - `evento: "cierre_ojo_R_e_inicio_L"`
+  - `acciones` con foróptero (R close, L open + RX_L) **seguido** de TV H@0.3 (en ese orden)
+
+**Reglas para el output del auditor en este caso:**
+
+- `violaciones`: enumerá **solo** las omisiones de la rama 2 (cuatro posibles ítems arriba). **Prohibido** mezclar violaciones de las ramas `= 1` (p. ej. "debe incluir TV para `siguiente_optotipo` si contador = 1") — la simulación dio ≥ 2 y esas reglas no aplican.
+- `correccionSugerida`: **autosuficiente**. Copiá los cuatro bloques (patch R, patch L, evento, acciones) con valores literales sustituyendo `logmarActual` y `letraActual` de `estadoAntes.agudeza.R`, y `esfera/cilindro/angulo` de `estadoAntes.rx.L`. El reintento del protocolo debe poder reconstruir la propuesta solo con esa sugerencia.
+
+**Ejemplo de propuesta inválida** (debe rechazarse con este anti-patrón):
+
+```text
+estadoAntes: ojo R, logmarActual 0.2, letra E,
+  aciertosPorLogmar {"0.3":1,"0.2":1,"0.1":0,"0.0":0}
+interpretacion: correcta E
+propuesta:
+  estadoPatch: { ojoActual:"L", agudeza:{ R:{ aciertosPorLogmar:{"0.3":1,"0.2":2,…} } } }
+  acciones: []
+  evento: "siguiente_optotipo"
+```
+
+Violaciones esperadas (todas de rama 2):
+
+1. Falta `agudeza.R.logmarFinal` y `letraFinal` en el patch.
+2. Falta `agudeza.L` inicializado a H@0.3 con contadores 0 y `letrasUsadas:["H"]`.
+3. `evento` es `"siguiente_optotipo"` cuando debe ser `"cierre_ojo_R_e_inicio_L"`.
+4. `acciones: []` cuando deben llevar foróptero (R close, L open + RX_L) y TV H@0.3.
 
 ---
 

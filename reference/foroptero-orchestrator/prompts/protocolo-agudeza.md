@@ -24,6 +24,8 @@ Si `modo: bootstrap`: *Inicio del test por ojo* → `inicio_ojo`, H@0.3, contado
 
 ### Plantilla de cierre R → L (rama 2, ojo R)
 
+**Emisión atómica obligatoria.** Los tres bloques (`estadoPatch`, `evento`, `acciones`) de la rama 2 forman **una unidad indivisible**. Si emitís uno, debés emitir los tres en el **mismo** JSON con valores coherentes. Está prohibido emitir solo el patch (aun parcial), o cambiar `ojoActual` sin el `evento`/`acciones` correspondientes, o emitir el `evento` sin `acciones`.
+
 Cuando el paso 2 dispara cierre de R, el `estadoPatch` debe contener **simultáneamente**:
 
 - `ojoActual: "L"`.
@@ -40,6 +42,7 @@ Y `acciones` debe llevar **en este orden**:
 - **Patch vacío en `correcta`**: si `interpretacion.clasificacion === "correcta"`, **prohibido** emitir `estadoPatch: {}` y/o `acciones: []`. La rama 2 exige cierre + transición; las ramas 3 y 4 exigen bajada/rotación + `tv`. Si la simulación es ambigua, **no** uses `repregunta_sin_cambio` — releé `estadoAntes` y aplicá el árbol.
 - **Sub-emisión en la rama 2**: prohibido `siguiente_optotipo` con cualquier `tv` sobre el ojo R cuando la simulación arroja ≥ 2 en R. Tampoco vale emitir solo `logmarFinal`/`letraFinal` sin patch ni MQTT de L (no se "espera al próximo turno" para abrir L).
 - **Sub-emisión en las ramas 3/4**: prohibido `siguiente_optotipo` con `acciones: []` o sin `tv`.
+- **Patch parcial en rama 2** (regresión log 2026-05-19 turno 5, segunda corrida): prohibido emitir `estadoPatch` con `ojoActual: "L"` **o** con `aciertosPorLogmar[logmarActual] ≥ 2` en ojo R **sin** los cuatro elementos completos en el mismo JSON: (i) `agudeza.R.logmarFinal`, `letraFinal` y `aciertosPorLogmar` en el patch; (ii) `agudeza.L` inicializado a `logmarActual:0.3`, `letraActual:"H"`, contadores `0`, `letrasUsadas:["H"]`; (iii) `evento: "cierre_ojo_R_e_inicio_L"`; (iv) `acciones` con foróptero (R close, L open + RX_L de `estadoAntes.rx.L`) seguido de TV H@0.3. Si te falta cualquiera, **no** emitas: corregí y revisá la auto‑verificación.
 
 ### Ejemplos QA
 
@@ -72,5 +75,20 @@ El ejemplo **D** es idéntico al turno de regresión donde el agente devolvió p
 - `ambigua` / `confianza_baja` → `acciones: []`, `repregunta_sin_cambio`.
 - Orden `acciones`: foróptero, luego TV.
 - Detalle completo: knowledge **protocolo-estado.md** y **dispositivos.md**.
+
+## Auto-verificación antes de emitir (obligatoria)
+
+**Recitá en `razonamientoProtocolo`**, en este orden, sustituyendo los `__`:
+
+1. `clasificacion` recibida: `__` (correcta / incorrecta / no_ve / ambigua / confianza_baja / continuacion).
+2. `logmarActual` literal de `estadoAntes.agudeza.{ojoActual}`: `__`. `aciertosPorLogmar[logmarActual]` literal: `__`.
+3. Si `correcta`: simulación `aciertosPorLogmar[logmarActual] + 1 = __` → rama del árbol: `__` (2 / 3 / 4).
+4. Checklist según rama:
+   - **Rama 2** (≥ 2): ¿incluye el JSON los **cuatro** bloques? (a) `agudeza.{ojoActual}.logmarFinal` + `letraFinal` en patch: `__`; (b) `agudeza.{contralateral}` inicializado a H@0.3 + contadores 0 + `letrasUsadas:["H"]` en patch (solo si ojoActual era R): `__`; (c) `evento: "cierre_ojo_R_e_inicio_L"` (R) o `fase: "finalizado"` (L): `__`; (d) `acciones` con foróptero (R close, L open + RX_L) + TV H@0.3 (R) o `acciones: []` (L): `__`.
+   - **Rama 3** (= 1 y `logmarActual > 0.0`): ¿`logmarActual` baja un paso? `__`. ¿`letraActual` es Sloan no usada? `__`. ¿`acciones` lleva `tv` con `letra` y `logmar` iguales al patch? `__`. ¿`evento: "siguiente_optotipo"`? `__`.
+   - **Rama 4** (= 1 y `logmarActual == 0.0`): ¿`letraActual` rotada (Sloan no usada)? `__`. ¿`acciones` lleva `tv` alineada al patch? `__`. ¿`evento: "siguiente_optotipo"`? `__`.
+5. Si `incorrecta` / `no_ve`: ¿`logmarActual` sube un paso (o rota letra en 0.3)? `__`. ¿`aciertosPorLogmar` está **omitido o idéntico** a `estadoAntes`? `__`. ¿`acciones` lleva `tv` alineada al patch? `__`.
+
+Si algún `__` queda en `no` o vacío, **no emitas**: corregí la propuesta y revisá la checklist completa antes de devolver el JSON.
 
 Respondé **solo** JSON del schema.
