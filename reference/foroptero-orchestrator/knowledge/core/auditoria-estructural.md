@@ -19,6 +19,7 @@
 | `ambigua` o `confianza_baja` | `acciones: []`, `evento: repregunta_sin_cambio` (salvo bootstrap). |
 | Clasificación **correcta** pero respuesta incompatible con estímulo de fase | Rechazar; sugerir re-ejecutar intérprete. |
 | Clasificación **incorrecta** o **no_ve** | **No rechaces** la propuesta del protocolo **solo** porque `letraElegida` (u homólogo) no pertenezca al vocabulario de la fase. Si el intérprete debió usar `ambigua`, indicarlo en `correccionSugerida` sin bloquear rotación/subida clínica válida. |
+| **no_ve** o **incorrecta** con subida logMAR + `tv` | **No rechaces** porque `aciertosPorLogmar` no se incrementó ni porque el contador del logMAR destino ya sea ≥ 1 por aciertos previos. **No audites** `confirmaciones` en agudeza. Validá subida/acciones según checklist de fase. |
 | Orden de `acciones` | Foróptero antes que TV cuando ambos existen. |
 | `fase: finalizado` en patch | Solo si la fase define condiciones de cierre global cumplidas. |
 

@@ -1,0 +1,35 @@
+{
+  "id": "AUD-05",
+  "descripcion": "no_ve sube dos pasos logMAR (0.1 → 0.3) en un turno",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "R",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.1,
+        "letraActual": "T",
+        "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 }
+      }
+    }
+  },
+  "interpretacion": {
+    "clasificacion": "no_ve",
+    "letrasCandidatas": [],
+    "letraElegida": null
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "agudeza": {
+        "R": {
+          "logmarActual": 0.3,
+          "letraActual": "C",
+          "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 }
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "C", "logmar": 0.3 }],
+    "evento": "siguiente_optotipo"
+  },
+  "esperado": { "aprobado": false }
+}

@@ -22,7 +22,7 @@ knowledge/
 | Agente | Prompt | Knowledge |
 |--------|--------|-----------|
 | **intérprete** | `prompts/interprete.md` (genérico) | core/interpretacion-comun + fases/agudeza/interpretacion |
-| **auditor** | `prompts/auditor.md` (genérico) | core/auditoria-estructural + fases/agudeza/auditoria |
+| **auditor** | `prompts/auditor.md` (genérico) | core/auditoria-estructural + fases/agudeza/auditoria — checklist **bifurcado por clasificación** (`correcta` vs `no_ve`/`incorrecta`); ver `fixtures/auditor/` |
 | **comunicación** | `prompts/comunicacion.md` (genérico) | core/comunicacion-comun + fases/agudeza/comunicacion |
 | **protocolo** | `prompts/protocolo-agudeza.md` | fases/agudeza/protocolo-estado + dispositivos |
 

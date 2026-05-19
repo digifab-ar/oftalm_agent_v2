@@ -24,8 +24,11 @@ Cuando el ojo activo aún no tiene `letraActual` ni `logmarActual` (estado vací
 agents/          # llamadas OpenAI por rol
 pipelineTurno.js # orquestación + detectarModoTurno
 prompts/         # genéricos (interprete, auditor, comunicacion) + protocolo-agudeza.md
+fixtures/auditor/  # JSON QA manual del auditor (AUD-01…06)
 lib/             # knowledge.js (carga por fase), estimulo.js
 ```
+
+Mitigación auditor `no_ve`: [../PLAN_AUDITOR_NO_VE.md](../PLAN_AUDITOR_NO_VE.md)
 
 ## Requisitos
 

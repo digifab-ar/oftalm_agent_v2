@@ -1,0 +1,37 @@
+{
+  "id": "AUD-03",
+  "descripcion": "correcta @0.3: solo incrementa contador, siguiente_optotipo sin tv — anti-patrón T3",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "R",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.3,
+        "letraActual": "H",
+        "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
+        "letrasUsadas": ["H"]
+      }
+    }
+  },
+  "interpretacion": {
+    "clasificacion": "correcta",
+    "letrasCandidatas": ["H"],
+    "letraElegida": "H",
+    "notasInterprete": ""
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "agudeza": {
+        "R": {
+          "logmarActual": 0.3,
+          "letraActual": "H",
+          "aciertosPorLogmar": { "0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0 }
+        }
+      }
+    },
+    "acciones": [],
+    "evento": "siguiente_optotipo"
+  },
+  "esperado": { "aprobado": false }
+}

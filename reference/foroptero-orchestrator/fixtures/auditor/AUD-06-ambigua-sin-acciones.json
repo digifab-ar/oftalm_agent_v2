@@ -1,0 +1,29 @@
+{
+  "id": "AUD-06",
+  "descripcion": "ambigua → acciones vacías, repregunta_sin_cambio",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "R",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.3,
+        "letraActual": "H",
+        "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 }
+      }
+    }
+  },
+  "interpretacion": {
+    "clasificacion": "ambigua",
+    "letrasCandidatas": [],
+    "letraElegida": null,
+    "notasInterprete": "veo una equis"
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {},
+    "acciones": [],
+    "evento": "repregunta_sin_cambio",
+    "detalleEvento": {}
+  },
+  "esperado": { "aprobado": true }
+}

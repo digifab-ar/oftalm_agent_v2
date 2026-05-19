@@ -5,6 +5,26 @@
 
 ---
 
+## Campos de estado (agudeza)
+
+- **Cierre por ojo:** `aciertosPorLogmar` del ojo activo (≥ 2 en el **mismo** logMAR tras clasificación **correcta**).
+- **`confirmaciones`:** puede aparecer en JSON legacy; **no** es criterio de auditoría en agudeza. No generes violaciones ni exijas cambios en ese campo.
+
+---
+
+## Tabla de decisión por clasificación
+
+Usá **un solo** checklist según `interpretacion.clasificacion`:
+
+| `clasificacion` | Checklist a usar | Ignorar |
+|-----------------|------------------|---------|
+| **correcta** | [Checklist tras correcta](#checklist-tras-correcta) | Reglas de subida `no_ve` / `incorrecta` |
+| **incorrecta**, **no_ve** | [Checklist tras incorrecta / no_ve](#checklist-tras-incorrecta--no_ve) | Post-correcta, anti-patrón “solo contador” |
+| **ambigua**, **confianza_baja** | Estructural: `acciones: []`, `repregunta_sin_cambio` | Contadores, logMAR |
+| **continuacion** (bootstrap) | [Inicio del test](#inicio-del-test-modo-bootstrap) | Contadores previos null en arranque |
+
+---
+
 ## Inicio del test (`modo: bootstrap`)
 
 Validar patch + acciones según *Inicio del test por ojo* en **protocolo-estado.md**:
@@ -16,6 +36,8 @@ Validar patch + acciones según *Inicio del test por ojo* en **protocolo-estado.
 ---
 
 ## Checklist tras **correcta**
+
+**Solo** si `interpretacion.clasificacion === "correcta"`.
 
 Simulá `aciertosPorLogmar` **después** del patch.
 
@@ -39,8 +61,37 @@ Simulá `aciertosPorLogmar` **después** del patch.
 
 ## Checklist tras **incorrecta** / **no_ve**
 
-- Subida de logMAR: como máximo un paso (`0.0→0.1→0.2→0.3`).
-- En **0.3**: rotar letra + `tv` (no rechazar solo por `letraElegida` no Sloan; ver **auditoria-estructural.md**).
+**Solo** si `interpretacion.clasificacion` es `incorrecta` o `no_ve`.
+
+En el protocolo de agudeza, incorrecta y no_ve implican subida de logMAR (o rotación en 0.3) **sin contadores** (ver `protocolo-estado.md`).
+
+### Prohibido en este turno
+
+- Incrementar `aciertosPorLogmar` en ningún nivel.
+- Exigir que el contador del logMAR **destino** suba porque ya sea ≥ 1 por aciertos **anteriores** en ese mismo logMAR.
+- Aplicar simulación post-**correcta** ni el anti-patrón “solo contador”.
+- Auditar ni exigir cambios en `confirmaciones`.
+
+### Aprobar si
+
+- Subida de `logmarActual` como máximo **un paso** en la escala `0.0 → 0.1 → 0.2 → 0.3` (o en **0.3**: solo rotar letra, sin subir más).
+- `acciones` incluye `tv` con `letra` y `logmar` iguales al patch del ojo activo en `estadoPatch`.
+- `evento` coherente (p. ej. `siguiente_optotipo` si cambió estímulo).
+- Los contadores del patch coinciden con `estadoAntes` (sin incrementos).
+
+### Rechazar si
+
+- Sube más de un paso logMAR en un solo turno.
+- `tv` con letra/logmar ≠ patch del ojo activo.
+- Clasificación `no_ve` o `incorrecta` pero el patch **incrementa** algún valor de `aciertosPorLogmar`.
+- Clasificación **correcta** pero la propuesta solo sube logMAR sin lógica de contador (eso corresponde al otro checklist).
+
+### Coherencia TV ↔ patch
+
+| Campo patch | Acción `tv` |
+|-------------|-------------|
+| `agudeza.{ojo}.logmarActual` | `logmar` |
+| `agudeza.{ojo}.letraActual` | `letra` |
 
 ---
 
@@ -55,15 +106,35 @@ Simulá `aciertosPorLogmar` **después** del patch.
 
 ---
 
-## Ejemplo QA (ojo R)
+## Ejemplos QA (ojo R)
 
-| Paso | logMAR | Clasificación | Esperado |
-|------|--------|---------------|----------|
-| 1 | 0.3 | correcta H | `0.3:1`; bajar a **0.2** + **tv** |
-| 4 | 0.2 | correcta (2.º en 0.2) | Cierre R + inicio L |
+| Paso | logMAR | Clasificación | Esperado auditor |
+|------|--------|---------------|------------------|
+| 1 | 0.3 | correcta H | `0.3:1`; bajar a **0.2** + **tv** → **aprobado** |
+| 4 | 0.2 | correcta (2.º en 0.2) | Cierre R + inicio L → **aprobado** |
+
+### Caso regresión T4-log (`no_ve` con contador previo en destino)
+
+**Aprobar** (`aprobado: true`):
+
+```text
+estadoAntes: ojo R, logmarActual 0.1, letra T,
+  aciertosPorLogmar { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 }
+interpretacion: no_ve (ej. "veo borroso")
+propuesta: logmarActual 0.2, letra E, tv E@0.2,
+  aciertosPorLogmar sin incrementar "0.2" (sigue en 1)
+```
+
+**Rechazar** (`aprobado: false`):
+
+```text
+misma base, propuesta incrementa aciertosPorLogmar["0.2"] a 2 solo por no_ve
+```
+
+Fixtures JSON: `fixtures/auditor/AUD-01.json`, `AUD-02.json`.
 
 ---
 
 ## Caso crítico ojo L
 
-`logmarActual: 0.1`, `0.1:1` en contadores, correcta → `0.1:2`, cierre L, **sin** bajar a 0.0 con `tv`.
+`logmarActual: 0.1`, `0.1:1` en contadores, **correcta** → `0.1:2`, cierre L, **sin** bajar a 0.0 con `tv`.

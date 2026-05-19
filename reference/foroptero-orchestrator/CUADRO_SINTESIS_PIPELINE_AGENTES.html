@@ -19,6 +19,10 @@
       --code-bg: #eef1f6;
       --warn-bg: #fffbeb;
       --warn-border: #f59e0b;
+      --ok-bg: #ecfdf5;
+      --ok-border: #10b981;
+      --bootstrap: #7c3aed;
+      --bootstrap-soft: #f5f3ff;
     }
 
     * { box-sizing: border-box; }
@@ -34,7 +38,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 260px 1fr;
       min-height: 100vh;
     }
 
@@ -67,6 +71,7 @@
     }
 
     nav.toc a:hover { background: var(--accent-soft); }
+    nav.toc .sub { padding-left: 1rem; font-size: 0.8125rem; }
 
     main {
       padding: 2rem 2.5rem 3rem;
@@ -79,7 +84,27 @@
       line-height: 1.25;
     }
 
-    .lead { color: var(--muted); margin-bottom: 1.5rem; }
+    .lead { color: var(--muted); margin-bottom: 0.75rem; }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: #047857; }
+    .badge-warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: #b45309; }
+    .badge-bootstrap { background: var(--bootstrap-soft); border: 1px solid var(--bootstrap); color: var(--bootstrap); }
+    .badge-respuesta { background: var(--accent-soft); border: 1px solid var(--accent); color: var(--accent); }
 
     h2 {
       font-size: 1.35rem;
@@ -95,10 +120,9 @@
     }
 
     p { margin: 0.75rem 0; }
-
     ul { margin: 0.5rem 0 1rem; padding-left: 1.25rem; }
 
-    code, .mono {
+    code {
       font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
       font-size: 0.88em;
       background: var(--code-bg);
@@ -132,7 +156,6 @@
       background: var(--header-bg);
       color: var(--header-text);
       font-weight: 600;
-      white-space: nowrap;
     }
 
     tr:last-child td { border-bottom: none; }
@@ -141,16 +164,6 @@
 
     table.compact { font-size: 0.875rem; }
     table.compact th, table.compact td { padding: 0.5rem 0.7rem; }
-
-    /* Tabla ancha: columnas con ancho mínimo legible */
-    table.wide th:nth-child(1) { width: 2.5rem; }
-    table.wide th:nth-child(2) { min-width: 7rem; }
-    table.wide th:nth-child(3) { min-width: 10rem; }
-    table.wide th:nth-child(4) { min-width: 12rem; }
-    table.wide th:nth-child(5) { min-width: 9rem; }
-    table.wide th:nth-child(6) { min-width: 9rem; }
-    table.wide th:nth-child(7) { min-width: 10rem; }
-    table.wide th:nth-child(8) { min-width: 9rem; }
 
     blockquote {
       margin: 1rem 0;
@@ -170,7 +183,12 @@
       margin: 1rem 0;
     }
 
-    pre.flow {
+    .callout-ok {
+      background: var(--ok-bg);
+      border-color: var(--ok-border);
+    }
+
+    pre.flow, pre.tree {
       background: #1e293b;
       color: #e2e8f0;
       padding: 1rem 1.25rem;
@@ -180,13 +198,14 @@
       line-height: 1.45;
     }
 
+    pre.tree { background: #f8fafc; color: #334155; border: 1px solid var(--border); }
+
     .diagram {
       margin: 1.5rem 0;
       padding: 1rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
-      text-align: center;
     }
 
     .agent-card {
@@ -208,20 +227,20 @@
       color: var(--header-bg);
     }
 
+    .agent-card .tag-row { margin-bottom: 0.35rem; }
+
     .agent-card .meta {
       display: grid;
-      grid-template-columns: 7rem 1fr;
+      grid-template-columns: 7.5rem 1fr;
       gap: 0.35rem 0.75rem;
       font-size: 0.875rem;
       margin-top: 0.5rem;
     }
 
-    .agent-card .meta dt {
-      font-weight: 600;
-      color: var(--muted);
-    }
-
+    .agent-card .meta dt { font-weight: 600; color: var(--muted); }
     .agent-card .meta dd { margin: 0; }
+
+    .doc-links a { color: var(--accent); }
 
     footer {
       margin-top: 2.5rem;
@@ -229,7 +248,6 @@
       border-top: 1px solid var(--border);
       font-size: 0.875rem;
       color: var(--muted);
-      font-style: italic;
     }
 
     @media (max-width: 900px) {
@@ -257,55 +275,63 @@
     <nav class="toc" aria-label="Índice">
       <h2>Contenido</h2>
       <a href="#general">1. Vista general</a>
-      <a href="#orden">2. Orden de ejecución</a>
-      <a href="#sintesis">3. Cuadro por agente</a>
-      <a href="#actividades">4. Actividades detalladas</a>
-      <a href="#knowledge">5. Mapa knowledge</a>
-      <a href="#flujo">6. Flujo de datos</a>
-      <a href="#responsabilidades">7. Responsabilidades</a>
-      <a href="#archivos">8. Archivos</a>
+      <a href="#modos">2. Modos bootstrap / respuesta</a>
+      <a href="#orden" class="sub">2.1 Pipeline backend</a>
+      <a href="#fallbacks" class="sub">2.2 Fallbacks</a>
+      <a href="#voz" class="sub">2.3 Agente de voz</a>
+      <a href="#principios">3. Principios (multi-fase)</a>
+      <a href="#sintesis">4. Cuadro por agente</a>
+      <a href="#actividades">5. Actividades detalladas</a>
+      <a href="#knowledge">6. Knowledge core + fases</a>
+      <a href="#flujo">7. Flujos de datos</a>
+      <a href="#responsabilidades">8. Responsabilidades</a>
+      <a href="#archivos">9. Archivos y docs</a>
     </nav>
 
     <main>
       <h1>Cuadro síntesis — Pipeline multi-agente</h1>
-      <p class="lead">Examen de agudeza POC · Documento de referencia (solo lectura)</p>
+      <p class="lead">Examen de agudeza POC · Referencia de lectura · Actualizado 2026-05-19</p>
 
-      <p>Resume roles, actividades, knowledge y orden de ejecución a partir de:</p>
-      <ul>
-        <li>Orquestación: <code>pipelineTurno.js</code></li>
-        <li>Prompts: <code>prompts/interprete.md</code>, <code>protocolo.md</code>, <code>auditor.md</code>, <code>comunicacion.md</code></li>
-        <li>Knowledge: <code>knowledge/*.md</code></li>
-        <li>Agente de voz: <code>src/app/agentConfigs/chatSupervisor/index.ts</code></li>
+      <div class="meta-bar">
+        <span class="badge badge-ok">Bootstrap implementado</span>
+        <span class="badge badge-ok">Knowledge core + fases/agudeza</span>
+        <span class="badge badge-ok">Fallbacks diferenciados</span>
+        <span class="badge badge-warn">E2E AC1–AC7 pendiente (Fase F)</span>
+      </div>
+
+      <p>Fuentes principales:</p>
+      <ul class="doc-links">
+        <li><code>pipelineTurno.js</code> — orquestación, <code>detectarModoTurno</code>, fallbacks</li>
+        <li><code>lib/knowledge.js</code>, <code>lib/estimulo.js</code> — carga por fase y estímulo en user</li>
+        <li><a href="../DISENO_AGENTE_INTERMEDIO.md">DISENO_AGENTE_INTERMEDIO.md</a> — arquitectura y contrato API</li>
+        <li><a href="../PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md">PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md</a> — mitigación log + escala multi-fase</li>
+        <li><a href="README.md">foroptero-orchestrator/README.md</a>, <a href="knowledge/README.md">knowledge/README.md</a></li>
+        <li><code>src/app/agentConfigs/chatSupervisor/index.ts</code> — agente de voz</li>
       </ul>
 
       <h2 id="general">1. Vista general del sistema</h2>
-      <p>El examen se divide en <strong>dos capas</strong>:</p>
 
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Capa</th>
-              <th>Componente</th>
-              <th>Responsabilidad</th>
-            </tr>
+            <tr><th>Capa</th><th>Componente</th><th>Responsabilidad</th></tr>
           </thead>
           <tbody>
             <tr>
               <td><strong>Voz (cliente)</strong></td>
               <td><code>chatAgent</code> — Oftalmólogo Virtual</td>
-              <td>Conversar con el paciente, transcribir audio literal, llamar al backend vía <code>consultarExamen</code>. <strong>No</strong> interpreta clínica ni controla dispositivos.</td>
+              <td>Conversación Realtime; transcripción <strong>literal</strong>; <code>consultarExamen</code> → <code>POST /api/examen/turno</code>. Sin clasificación clínica ni MQTT.</td>
             </tr>
             <tr>
               <td><strong>Backend</strong></td>
-              <td>Pipeline en <code>procesarTurnoPipeline</code></td>
-              <td>Cuatro agentes LLM en cadena + aplicación de estado y MQTT.</td>
+              <td><code>procesarTurnoPipeline</code></td>
+              <td>Detecta <code>modo</code> del turno → hasta 4 agentes LLM (según modo) → patch estado → MQTT → respuesta filtrada a la voz.</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <p>El agente de voz solo recibe del backend: <code>pasos[].mensaje</code>, <code>contextoVoz</code> y <code>ok</code>. El razonamiento interno no se expone al paciente.</p>
+      <p>La voz solo recibe: <code>ok</code>, <code>pasos[].mensaje</code>, <code>contextoVoz</code> (y opcionalmente <code>modoTurno</code> en traza). Estado clínico completo: <code>GET /api/examen/detalle</code>.</p>
 
       <div class="diagram">
         <pre class="mermaid">
@@ -317,344 +343,431 @@ flowchart TB
   end
   subgraph pipeline["Backend — pipelineTurno.js"]
     API[procesarTurnoPipeline]
-    I[Intérprete]
+    M{detectarModoTurno}
+    IB[interpretacionBootstrap]
+    I[Intérprete LLM]
     P[Protocolo]
     A[Auditor]
     C[Comunicación]
-    S[(Estado examen)]
-    M[MQTT foróptero + TV]
-    API --> I --> P --> A
-    A -->|rechazado, reintento ≤1| P
+    FB[Fallbacks]
+    S[(estadoExamen)]
+    MQTT[MQTT]
+    API --> M
+    M -->|bootstrap| IB --> P
+    M -->|respuesta| I --> P
+    P --> A
+    A -->|rechazado ≤1 retry| P
     A -->|aprobado| C
-    A -->|fallo tras reintentos| FB[Fallback repregunta]
+    A -->|fallo| FB
     C --> S
     FB --> S
-    S --> M
+    S --> MQTT
   end
-  V <-->|audio / habla| Paciente[(Paciente)]
+  V <-->|audio| Paciente[(Paciente)]
         </pre>
       </div>
 
-      <h2 id="orden">2. Orden de ejecución</h2>
+      <blockquote>
+        <p>Respuesta: Intérprete → Protocolo → Auditor → [patch + MQTT] → Comunicación</p>
+        <p>Bootstrap: interpretación fija → Protocolo → Auditor → … (sin LLM intérprete)</p>
+      </blockquote>
 
-      <h3>2.1 Por turno en el backend (<code>procesarTurnoPipeline</code>)</h3>
+      <h2 id="modos">2. Modos de turno (<code>bootstrap</code> | <code>respuesta</code>)</h2>
+
+      <p>Calculado en <code>detectarModoTurno(estado)</code> <strong>antes</strong> del intérprete. El <code>modo</code> viaja en el user prompt de protocolo, auditor y comunicación (no en schemas JSON).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Modo</th>
+              <th>Disparador</th>
+              <th>Intérprete</th>
+              <th>Protocolo / auditor</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-bootstrap">bootstrap</span></td>
+              <td>Ojo activo con <code>letraActual</code>, <code>logmarActual</code> y <code>logmarFinal</code> en <code>null</code> (tras <code>POST /api/examen/nuevo</code>)</td>
+              <td><strong>Omitido</strong> — <code>interpretacionBootstrap()</code>: <code>continuacion</code></td>
+              <td>Inicio clínico del ojo: H@0.3, foróptero + TV</td>
+              <td>Primer <code>POST /turno</code> {} ejecuta bootstrap automáticamente. Frase social del paciente se loguea, no se interpreta.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-respuesta">respuesta</span></td>
+              <td>Ojo ya inicializado</td>
+              <td>LLM con <code>estimulo</code> de fase (<code>lib/estimulo.js</code>)</td>
+              <td>Flujo estándar según clasificación</td>
+              <td>Endpoints HTTP sin cambios.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="orden">2.1 Orden de ejecución — pipeline backend</h2>
+
       <div class="table-wrap">
         <table class="compact">
           <thead>
             <tr>
               <th>Paso</th>
-              <th>Agente / acción</th>
-              <th>Condición</th>
-              <th>Qué ocurre después</th>
+              <th>Acción</th>
+              <th>bootstrap</th>
+              <th>respuesta</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td>0</td><td>Cargar estado</td><td>Siempre</td><td><code>estadoAntes = obtenerEstadoParaOrquestador()</code></td></tr>
-            <tr><td>1</td><td><strong>Intérprete</strong></td><td>Siempre</td><td>Clasificación lingüística (<code>respuestaPaciente</code> + <code>confianza</code>)</td></tr>
-            <tr><td>2</td><td><strong>Protocolo</strong></td><td>Siempre (1.ª vez)</td><td>Propuesta: <code>estadoPatch</code>, <code>acciones</code>, <code>evento</code></td></tr>
-            <tr><td>3</td><td><strong>Auditor</strong></td><td>Tras cada propuesta</td><td>Aprueba o rechaza</td></tr>
-            <tr><td>3b</td><td><strong>Protocolo</strong> (reintento)</td><td>Auditor rechaza y reintentos &lt; 1</td><td>Protocolo recibe <code>feedback</code> con violaciones</td></tr>
-            <tr><td>4a</td><td><strong>Comunicación</strong></td><td>Auditor <strong>aprobó</strong></td><td>Mensajes al paciente + <code>contextoVoz</code></td></tr>
-            <tr><td>4b</td><td><strong>Fallback</strong></td><td>Auditor rechazó tras reintentos</td><td>Repregunta fija (sin LLM comunicación)</td></tr>
-            <tr><td>5</td><td><strong>Servidor</strong></td><td>Siempre</td><td>Patch → MQTT → historial</td></tr>
-            <tr><td>6</td><td>Respuesta HTTP</td><td>Siempre</td><td><code>pasos</code>, <code>contextoVoz</code>, traza opcional</td></tr>
+            <tr><td>0</td><td>Cargar estado + <code>detectarModoTurno</code></td><td colspan="2">Siempre</td></tr>
+            <tr><td>1</td><td>Interpretación</td><td><code>interpretacionBootstrap()</code></td><td><code>ejecutarInterprete</code> (LLM)</td></tr>
+            <tr><td>2</td><td><strong>Protocolo</strong> (+ <code>modo</code>)</td><td colspan="2">Propuesta: patch, acciones, evento</td></tr>
+            <tr><td>3</td><td><strong>Auditor</strong> (+ <code>modo</code>)</td><td colspan="2">Aprueba / rechaza (máx. <strong>1</strong> reintento protocolo)</td></tr>
+            <tr><td>4a</td><td><strong>Comunicación</strong> LLM</td><td colspan="2">Si auditor aprobó; recibe <code>huboCambioDispositivo</code></td></tr>
+            <tr><td>4b</td><td><strong>Fallback</strong> (sin LLM comunicación)</td><td><code>fallbackBootstrap</code></td><td><code>fallbackAuditoria</code> según clasificación</td></tr>
+            <tr><td>5</td><td>Servidor</td><td colspan="2">Patch → MQTT → historial (<code>modoTurno</code> en registro)</td></tr>
+            <tr><td>6</td><td>HTTP</td><td colspan="2"><code>pasos</code>, <code>contextoVoz</code>, <code>modoTurno</code>, <code>accionesEjecutadas</code></td></tr>
           </tbody>
         </table>
       </div>
 
-      <blockquote>
-        <p>Intérprete → Protocolo → Auditor → [patch + MQTT] → Comunicación</p>
-      </blockquote>
-      <p>El bucle protocolo ↔ auditor permite como máximo <strong>1 reintento</strong> (<code>MAX_REINTENTOS_PROTOCOLO = 1</code>).</p>
+      <h2 id="fallbacks">2.2 Fallbacks (mitigación pipeline)</h2>
 
-      <h3>2.2 Bucle conversacional del agente de voz</h3>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Momento</th>
-              <th>Llamada a <code>consultarExamen</code></th>
-              <th>Comportamiento</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Inicio de sesión</td><td>Sin parámetros</td><td>Primeros mensajes y <code>contextoVoz</code></td></tr>
-            <tr><td>Tras hablar al paciente</td><td>Según <code>contextoVoz</code> anterior</td><td>Ver tabla siguiente</td></tr>
-            <tr><td>Paciente habló</td><td><code>respuestaPaciente</code> + <code>confianza</code></td><td>Dispara pipeline completo en backend</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <p>Tres caminos distintos si el auditor rechaza tras reintentos o falla el bootstrap. El motivo queda en <code>detalleEvento.motivo</code>.</p>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th><code>contextoVoz</code></th>
-              <th>Acción del agente de voz</th>
+              <th>Función</th>
+              <th>Cuándo</th>
+              <th>Mensaje al paciente (ej.)</th>
+              <th><code>motivo</code></th>
             </tr>
           </thead>
           <tbody>
-            <tr><td><code>inicio</code></td><td>Decir mensajes; seguir instrucciones del turno</td></tr>
-            <tr><td><code>esperar_respuesta</code></td><td>Decir mensajes; <strong>esperar</strong> al paciente; luego transcripción + confianza</td></tr>
-            <tr><td><code>continuar_sin_respuesta</code></td><td>Decir todos los mensajes; llamar de nuevo <strong>sin</strong> parámetros</td></tr>
+            <tr>
+              <td><code>fallbackBootstrap()</code></td>
+              <td><code>modo === bootstrap</code> y auditor falló</td>
+              <td>“Hubo un problema al iniciar el examen…”</td>
+              <td><code>fallback_bootstrap</code></td>
+            </tr>
+            <tr>
+              <td><code>fallbackAuditoria()</code></td>
+              <td><code>modo === respuesta</code>, clasificación <strong>clara</strong> (<code>correcta</code>, <code>incorrecta</code>, <code>no_ve</code>)</td>
+              <td>“Un momento, estoy ajustando el examen. Mirá la pantalla…”</td>
+              <td><code>fallback_auditoria</code></td>
+            </tr>
+            <tr>
+              <td><code>fallbackAuditoria()</code> / repregunta</td>
+              <td>Auditor falló y clasificación <strong>no</strong> clínica</td>
+              <td>“No llegué a entender bien la letra…” (como ambigua)</td>
+              <td><code>fallback_auditoria</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-ok">
+        <strong>Regla de mitigación:</strong> no decir “no entendí la letra” cuando el paciente fue entendido clínicamente pero falló la validación del protocolo (evita desalinear TV y mensaje).
+      </div>
+
+      <h2 id="voz">2.3 Agente de voz — bucle conversacional</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Momento</th><th><code>consultarExamen</code></th><th>Efecto en backend</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Inicio / tras <code>continuar_sin_respuesta</code></td><td>Body vacío <code>{}</code></td><td>Often <strong>bootstrap</strong> en primer turno post-<code>/nuevo</code></td></tr>
+            <tr><td>Paciente habló</td><td><code>respuestaPaciente</code> literal + <code>confianza</code> (audio)</td><td><strong>respuesta</strong> — pipeline completo</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th><code>contextoVoz</code></th><th>Acción voz</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>inicio</code></td><td>Pronunciar <code>pasos</code>; seguir modo del turno</td></tr>
+            <tr><td><code>esperar_respuesta</code></td><td>Pronunciar; esperar paciente; llamar con transcripción + confianza</td></tr>
+            <tr><td><code>continuar_sin_respuesta</code></td><td>Pronunciar todo; llamar otra vez sin parámetros</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="callout">
-        <strong>Regla crítica:</strong> el texto en <code>pasos[].mensaje</code> es lo <strong>único</strong> que puede decir al paciente (copia literal). No envía clasificaciones clínicas ni letras corregidas.
+        <strong>Regla crítica:</strong> solo puede decir el texto de <code>pasos[].mensaje</code> (copia literal). <code>confianza</code> = calidad del audio, no acierto clínico.
       </div>
 
-      <h2 id="sintesis">3. Cuadro síntesis por agente</h2>
-      <p>La tabla ancha se presenta en tarjetas para lectura cómoda; abajo hay versión tabular con scroll horizontal.</p>
+      <h2 id="principios">3. Principios de arquitectura (multi-fase)</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Principio</th><th>Implicación</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Protocolo = dueño del QUÉ clínico</td><td>Árbol logMAR, cierre, R→L en <code>fases/agudeza/protocolo-estado.md</code> + <code>prompts/protocolo-agudeza.md</code></td></tr>
+            <tr><td>Intérprete / auditor / comunicación = transversales</td><td>Prompts genéricos + knowledge <code>core/*</code> + capa <code>fases/{fase}/*</code></td></tr>
+            <tr><td>Auditor no duplica protocolo</td><td><code>fases/agudeza/auditoria.md</code> = checklist; referencia al protocolo, no copia del árbol</td></tr>
+            <tr><td>Una fuente de verdad por regla</td><td>Cambio clínico → protocolo; auditor valida cumplimiento</td></tr>
+            <tr><td>Enrutamiento por <code>estado.fase</code></td><td><code>cargarSystemAgente(agente, fase)</code> en <code>lib/knowledge.js</code></td></tr>
+            <tr><td>Defensa en profundidad</td><td>Reglas críticas en prompt corto + knowledge + fallbacks en código</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="sintesis">4. Cuadro síntesis por agente</h2>
 
       <div class="agent-card">
         <article>
-          <h4>— Oftalmólogo Virtual (<code>chatSupervisor</code>)</h4>
-          <p><strong>Rol:</strong> Interfaz de voz con el paciente.</p>
+          <h4>— Oftalmólogo Virtual</h4>
+          <div class="tag-row"><span class="badge badge-respuesta">Cliente Realtime</span></div>
           <dl class="meta">
-            <dt>Actividades</dt><dd>Saludar y guiar; transcribir literal; confianza de audio; <code>consultarExamen</code>; leer mensajes en orden.</dd>
-            <dt>Knowledge</dt><dd><code>index.ts</code> (no usa .md del orchestrator)</dd>
-            <dt>Entradas</dt><dd>Audio; HTTP (<code>pasos</code>, <code>contextoVoz</code>)</dd>
-            <dt>Salidas</dt><dd><code>respuestaPaciente</code>, <code>confianza</code> o body vacío</dd>
-            <dt>No hace</dt><dd>Interpretar clínica; normalizar letras; MQTT; inventar mensajes.</dd>
+            <dt>Rol</dt><dd>Captura + TTS; puente HTTP al orchestrator.</dd>
+            <dt>Prompt</dt><dd><code>chatSupervisor/index.ts</code> (no markdowns del servidor)</dd>
+            <dt>Salida HTTP</dt><dd><code>respuestaPaciente</code>, <code>confianza</code> o <code>{}</code></dd>
+            <dt>No hace</dt><dd>logMAR, MQTT, clasificar correcta/incorrecta, inventar mensajes.</dd>
           </dl>
         </article>
+
         <article>
-          <h4>1 — Intérprete</h4>
-          <p><strong>Rol:</strong> Clasificación lingüística del paciente.</p>
+          <h4>1 — Intérprete <span class="badge badge-respuesta">genérico</span></h4>
           <dl class="meta">
-            <dt>Actividades</dt><dd>Fonética Sloan; <code>letraActual</code>; <code>confianza_baja</code> si &lt; 0.7; <code>continuacion</code> sin respuesta.</dd>
-            <dt>Knowledge</dt><dd><code>interpretacion-paciente.md</code></dd>
-            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>respuestaPaciente</code>, <code>confianza</code></dd>
-            <dt>Salidas</dt><dd><code>clasificacion</code>, <code>letrasCandidatas</code>, <code>letraElegida</code>, <code>notasInterprete</code></dd>
-            <dt>No hace</dt><dd>Estado, MQTT, mensajes, cierre de ojo.</dd>
+            <dt>Rol</dt><dd>Clasificación lingüística para la fase activa.</dd>
+            <dt>Prompt</dt><dd><code>prompts/interprete.md</code></dd>
+            <dt>Knowledge</dt><dd><code>core/interpretacion-comun.md</code> + <code>fases/agudeza/interpretacion.md</code></dd>
+            <dt>User</dt><dd><code>estimulo</code> (letra/logMAR/ojo vía <code>lib/estimulo.js</code>), <code>fase</code>, <code>modo</code></dd>
+            <dt>Bootstrap</dt><dd><strong>No se invoca</strong> — interpretación fija en pipeline</dd>
+            <dt>Regla clave</dt><dd>Letras fuera Sloan (X, A, …) → <code>ambigua</code>, no <code>incorrecta</code></dd>
           </dl>
         </article>
+
         <article>
-          <h4>2 — Protocolo</h4>
-          <p><strong>Rol:</strong> Transición clínica y dispositivos.</p>
+          <h4>2 — Protocolo <span class="badge badge-bootstrap">específico fase</span></h4>
           <dl class="meta">
-            <dt>Actividades</dt><dd><code>aciertosPorLogmar</code>; cierre ≥ 2; logMAR; R→L mismo turno; MQTT foróptero → TV.</dd>
-            <dt>Knowledge</dt><dd><code>protocolo-agudeza-estado.md</code>, <code>dispositivos.md</code></dd>
-            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>interpretacion</code>, <code>feedback</code> (reintento)</dd>
-            <dt>Salidas</dt><dd><code>estadoPatch</code>, <code>acciones</code>, <code>evento</code>, <code>detalleEvento</code>, <code>razonamientoProtocolo</code></dd>
-            <dt>No hace</dt><dd>Re-clasificar; mensajes al paciente.</dd>
+            <dt>Rol</dt><dd>Estado, eventos, acciones MQTT.</dd>
+            <dt>Prompt</dt><dd><code>prompts/protocolo-agudeza.md</code> (futuro: <code>protocolo-lentes.md</code>)</dd>
+            <dt>Knowledge</dt><dd><code>fases/agudeza/protocolo-estado.md</code> + <code>dispositivos.md</code></dd>
+            <dt>User</dt><dd><code>interpretacion</code>, <code>modo</code>, <code>feedback</code> si reintento</dd>
+            <dt>Bootstrap</dt><dd>Inicio test por ojo (H@0.3, foróptero + TV)</dd>
           </dl>
         </article>
+
         <article>
-          <h4>3 — Auditor</h4>
-          <p><strong>Rol:</strong> Validar propuesta antes de aplicar.</p>
+          <h4>3 — Auditor <span class="badge badge-respuesta">genérico</span></h4>
           <dl class="meta">
-            <dt>Actividades</dt><dd>Anti-patrones; checklist; R→L; ambigua sin acciones.</dd>
-            <dt>Knowledge</dt><dd><code>auditoria-protocolo.md</code></dd>
-            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>interpretacion</code>, <code>propuestaProtocolo</code></dd>
-            <dt>Salidas</dt><dd><code>aprobado</code>, <code>violaciones</code>, <code>correccionSugerida</code></dd>
-            <dt>No hace</dt><dd>Patch alternativo; mensajes; re-clasificar (salvo grave).</dd>
+            <dt>Rol</dt><dd>QA de propuesta de protocolo antes de aplicar.</dd>
+            <dt>Prompt</dt><dd><code>prompts/auditor.md</code></dd>
+            <dt>Knowledge</dt><dd><code>core/auditoria-estructural.md</code> + <code>fases/agudeza/auditoria.md</code></dd>
+            <dt>Regla clave</dt><dd>Checklist <strong>bifurcado</strong> por <code>clasificacion</code>; no aplicar post-correcta en <code>no_ve</code>/<code>incorrecta</code></dd>
+            <dt>Anti-patrón</dt><dd>“Solo contador” (solo si <code>correcta</code>) + <code>siguiente_optotipo</code> sin <code>tv</code></dd>
+            <dt>Fixtures</dt><dd><code>fixtures/auditor/AUD-01…06</code> — regresión log T4 en AUD-01</dd>
           </dl>
         </article>
+
         <article>
-          <h4>4 — Comunicación</h4>
-          <p><strong>Rol:</strong> Texto al paciente y modo de voz.</p>
+          <h4>4 — Comunicación <span class="badge badge-respuesta">genérico</span></h4>
           <dl class="meta">
-            <dt>Actividades</dt><dd>Plantillas rioplatenses; coherencia con <code>evento</code>; <code>contextoVoz</code>.</dd>
-            <dt>Knowledge</dt><dd><code>comunicacion-paciente.md</code></dd>
-            <dt>Entradas</dt><dd><code>interpretacion</code>, evento protocolo, estado resumido</dd>
-            <dt>Salidas</dt><dd><code>mensajesPaciente</code>, <code>contextoVoz</code>, <code>razonamientoComunicacion</code></dd>
-            <dt>No hace</dt><dd>Estado; MQTT; re-interpretar.</dd>
+            <dt>Rol</dt><dd><code>mensajesPaciente</code> + <code>contextoVoz</code>.</dd>
+            <dt>Prompt</dt><dd><code>prompts/comunicacion.md</code></dd>
+            <dt>Knowledge</dt><dd><code>core/comunicacion-comun.md</code> + <code>fases/agudeza/comunicacion.md</code></dd>
+            <dt>User extra</dt><dd><code>huboCambioDispositivo</code> — no usar <code>continuar_sin_respuesta</code> si hubo MQTT</dd>
           </dl>
         </article>
+
         <article>
           <h4>— Servidor (no LLM)</h4>
-          <p><strong>Rol:</strong> Persistencia y hardware.</p>
           <dl class="meta">
-            <dt>Actividades</dt><dd>Patch, MQTT, historial, armar <code>pasos</code> tipo hablar.</dd>
-            <dt>Salidas</dt><dd>HTTP al cliente de voz</dd>
+            <dt>Rol</dt><dd><code>estadoExamen.js</code>, MQTT, historial, filtrar respuesta a voz.</dd>
+            <dt>API</dt><dd><code>/nuevo</code>, <code>/turno</code>, <code>/estado</code>, <code>/detalle</code>, <code>/registro.csv</code></dd>
           </dl>
         </article>
       </div>
 
-      <details>
-        <summary style="cursor:pointer; font-weight:600; margin-bottom:0.5rem;">Ver misma información en tabla (scroll horizontal)</summary>
-        <div class="table-wrap">
-          <table class="wide compact">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Agente</th>
-                <th>Rol</th>
-                <th>Actividades</th>
-                <th>Knowledge</th>
-                <th>Entradas</th>
-                <th>Salidas</th>
-                <th>No hace</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>—</td>
-                <td>Oftalmólogo Virtual</td>
-                <td>Voz / UI</td>
-                <td>Conversar, transcribir, confianza audio, consultarExamen</td>
-                <td>index.ts</td>
-                <td>Audio; pasos, contextoVoz</td>
-                <td>respuestaPaciente, confianza</td>
-                <td>Clínica, MQTT, inventar mensajes</td>
-              </tr>
-              <tr>
-                <td>1</td>
-                <td>Intérprete</td>
-                <td>Lingüística</td>
-                <td>Sloan, letraActual, confianza_baja</td>
-                <td>interpretacion-paciente.md</td>
-                <td>estadoAntes, respuesta, confianza</td>
-                <td>clasificacion, letras…</td>
-                <td>Estado, MQTT, mensajes</td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>Protocolo</td>
-                <td>Estado + HW</td>
-                <td>Contadores, cierre, R→L, acciones</td>
-                <td>protocolo + dispositivos</td>
-                <td>estado, interpretacion, feedback</td>
-                <td>patch, acciones, evento</td>
-                <td>Re-clasificar, mensajes</td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>Auditor</td>
-                <td>QA protocolo</td>
-                <td>Checklist, anti-patrones</td>
-                <td>auditoria-protocolo.md</td>
-                <td>estado, interpretacion, propuesta</td>
-                <td>aprobado, violaciones</td>
-                <td>Patch, mensajes</td>
-              </tr>
-              <tr>
-                <td>4</td>
-                <td>Comunicación</td>
-                <td>Paciente</td>
-                <td>Plantillas, contextoVoz</td>
-                <td>comunicacion-paciente.md</td>
-                <td>interpretacion, evento</td>
-                <td>mensajesPaciente, contextoVoz</td>
-                <td>Estado, MQTT</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </details>
+      <h2 id="actividades">5. Actividades detalladas</h2>
 
-      <h2 id="actividades">4. Actividades detalladas por agente</h2>
-
-      <h3>4.1 Intérprete</h3>
+      <h3>5.1 Intérprete (modo respuesta)</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
-          <tr><td>Clasificar</td><td><code>correcta</code>, <code>incorrecta</code>, <code>no_ve</code>, <code>ambigua</code>, <code>confianza_baja</code>, <code>frase_paciente_no_clinica</code>, <code>continuacion</code></td></tr>
-          <tr><td>Fonética Sloan</td><td>H, O, T, E, C, F, Z, L, P, D; pares H↔C, E↔C</td></tr>
-          <tr><td>Contexto estado</td><td><code>ojoActual</code>, <code>letraActual</code></td></tr>
-          <tr><td>Umbral</td><td>confianza &lt; 0.7 → <code>confianza_baja</code></td></tr>
-          <tr><td>Turno vacío</td><td><code>continuacion</code>, <code>letrasCandidatas: []</code></td></tr>
+          <tr><td>Clasificaciones</td><td><code>correcta</code>, <code>incorrecta</code>, <code>no_ve</code>, <code>ambigua</code>, <code>confianza_baja</code>, <code>frase_paciente_no_clinica</code>, <code>continuacion</code></td></tr>
+          <tr><td>Sloan</td><td>H, O, T, E, C, F, Z, L, P, D — fuera de lista → <code>ambigua</code></td></tr>
+          <tr><td>Estímulo</td><td>Usar <code>estimulo</code> del user (no hardcodear en prompt genérico)</td></tr>
+          <tr><td>Confianza</td><td>&lt; 0.7 → <code>confianza_baja</code></td></tr>
         </tbody>
       </table></div>
 
-      <h3>4.2 Protocolo</h3>
+      <h3>5.2 Protocolo</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
+          <tr><td>Bootstrap</td><td>Inicio ojo: RX, oclusión, H@0.3, contadores en 0</td></tr>
           <tr><td>Correcta</td><td>aciertos += 1; si ≥ 2 → cierre (sin TV extra en ese ojo)</td></tr>
-          <tr><td>Correcta sin cierre</td><td>Bajar logMAR o rotar 0.0 + <code>tv</code></td></tr>
-          <tr><td>Incorrecta / no_ve</td><td>Subir un paso o rotar en 0.3</td></tr>
+          <tr><td>Contador = 1</td><td>Bajar logMAR + rotar letra + <strong>obligatorio</strong> <code>tv</code></td></tr>
+          <tr><td>Cierre R</td><td>Mismo turno: <code>cierre_ojo_R_e_inicio_L</code> + foróptero + TV H@0.3</td></tr>
           <tr><td>Ambigua / confianza_baja</td><td><code>acciones: []</code>, <code>repregunta_sin_cambio</code></td></tr>
-          <tr><td>Cierre R</td><td>Mismo turno: L + foróptero + TV H@0.3</td></tr>
-          <tr><td>Cierre L</td><td><code>fase: finalizado</code> solo con L cerrado</td></tr>
-          <tr><td>Acciones</td><td>Foróptero, luego TV</td></tr>
+          <tr><td>Orden MQTT</td><td>Foróptero → TV</td></tr>
         </tbody>
       </table></div>
 
-      <h3>4.3 Auditor</h3>
+      <h3>5.3 Auditor</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
-          <tr><td>Anti-patrones</td><td>Contador por logMAR; no bajar si cierre</td></tr>
-          <tr><td>Checklist</td><td>R→L MQTT; un paso subida; finalizado solo L</td></tr>
-          <tr><td>Rechazo</td><td>violaciones + correccionSugerida al protocolo</td></tr>
+          <tr><td>Estructural (core)</td><td>Separar rol intérprete vs protocolo; orden acciones; ambigua sin MQTT</td></tr>
+          <tr><td>Agudeza (fase)</td><td>Simular contadores solo si <code>correcta</code>; R→L; rechazar “solo contador”</td></tr>
+          <tr><td><code>no_ve</code> / <code>incorrecta</code></td><td>Subida ≤1 paso + <code>tv</code>; <strong>no</strong> incrementar <code>aciertosPorLogmar</code>; ignorar <code>confirmaciones</code></td></tr>
+          <tr><td>Bootstrap</td><td>Validar inicio H@0.3 + acciones esperadas</td></tr>
         </tbody>
       </table></div>
 
-      <h3>4.4 Comunicación</h3>
+      <h3>5.4 Comunicación</h3>
       <div class="table-wrap"><table>
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
-          <tr><td>Mensajes</td><td>1–2 frases, rioplatense, sin jerga</td></tr>
-          <tr><td>contextoVoz</td><td>inicio / esperar_respuesta / continuar_sin_respuesta</td></tr>
-          <tr><td>Coherencia</td><td>Alineado con <code>evento</code> del protocolo</td></tr>
+          <tr><td>Plantillas</td><td>Por <code>evento</code> + clasificación (fase agudeza)</td></tr>
+          <tr><td><code>siguiente_optotipo</code></td><td>“Siguiente letra” — coherente con cambio real en TV</td></tr>
+          <tr><td><code>contextoVoz</code></td><td><code>inicio</code> | <code>esperar_respuesta</code> | <code>continuar_sin_respuesta</code></td></tr>
         </tbody>
       </table></div>
 
-      <h3>4.5 Oftalmólogo Virtual</h3>
+      <h2 id="knowledge">6. Knowledge — estructura core + fases</h2>
+
+      <pre class="tree">knowledge/
+  core/
+    interpretacion-comun.md
+    auditoria-estructural.md
+    comunicacion-comun.md
+  dispositivos.md          # compartido (MQTT)
+  fases/
+    agudeza/
+      interpretacion.md
+      protocolo-estado.md
+      auditoria.md
+      comunicacion.md
+    lentes/                 # (futuro)</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Agente</th><th>Prompt</th><th>Knowledge cargado (<code>lib/knowledge.js</code>)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Intérprete</td>
+              <td><code>prompts/interprete.md</code></td>
+              <td>core/interpretacion-comun + fases/agudeza/interpretacion</td>
+            </tr>
+            <tr>
+              <td>Auditor</td>
+              <td><code>prompts/auditor.md</code></td>
+              <td>core/auditoria-estructural + fases/agudeza/auditoria</td>
+            </tr>
+            <tr>
+              <td>Comunicación</td>
+              <td><code>prompts/comunicacion.md</code></td>
+              <td>core/comunicacion-comun + fases/agudeza/comunicacion</td>
+            </tr>
+            <tr>
+              <td>Protocolo</td>
+              <td><code>prompts/protocolo-agudeza.md</code></td>
+              <td>fases/agudeza/protocolo-estado + dispositivos</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Migración (archivos legacy eliminados 2026-05-19)</h3>
+      <div class="table-wrap">
+        <table class="compact">
+          <thead><tr><th>Antes (raíz knowledge/)</th><th>Ahora</th></tr></thead>
+          <tbody>
+            <tr><td><code>interpretacion-paciente.md</code></td><td>core + fases/agudeza/interpretacion</td></tr>
+            <tr><td><code>protocolo-agudeza-estado.md</code></td><td>fases/agudeza/protocolo-estado</td></tr>
+            <tr><td><code>auditoria-protocolo.md</code></td><td>core + fases/agudeza/auditoria</td></tr>
+            <tr><td><code>comunicacion-paciente.md</code></td><td>core + fases/agudeza/comunicacion</td></tr>
+            <tr><td><code>prompts/protocolo.md</code></td><td><code>prompts/protocolo-agudeza.md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Agregar fase <code>lentes</code>: carpeta <code>fases/lentes/*</code> + <code>protocolo-lentes.md</code> + registro en <code>FASE_KNOWLEDGE</code>; prompts genéricos sin cambiar.</p>
+
+      <h2 id="flujo">7. Flujos de datos</h2>
+
+      <h3>7.1 Turno bootstrap (ej. T0 post-<code>/nuevo</code>)</h3>
+      <pre class="flow">Voz: POST /turno {}
+  → detectarModoTurno → bootstrap
+  → interpretacionBootstrap (continuacion)
+  → Protocolo (modo bootstrap): inicio R, H@0.3, acciones
+  → Auditor (modo bootstrap): aprueba
+  → Comunicación: "Mirá la pantalla…"
+  → patch + MQTT + pasos[]</pre>
+
+      <h3>7.2 Turno respuesta (paciente habló)</h3>
+      <pre class="flow">Voz: respuestaPaciente + confianza
+  → detectarModoTurno → respuesta
+  → Intérprete: clasificacion (+ estimulo fase)
+  → Protocolo → Auditor (≤1 retry)
+  → [aprobado] Comunicación (huboCambioDispositivo)
+  → [fallo auditor] fallbackAuditoria | fallbackBootstrap
+  → patch + MQTT → pasos[] + contextoVoz</pre>
+
+      <h3>7.3 Escenario QA esperado (post-mitigación)</h3>
+      <div class="table-wrap">
+        <table class="compact">
+          <thead>
+            <tr><th>Turno</th><th>Input</th><th>Intérprete</th><th>Protocolo</th><th>TV</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>T0</td><td>bootstrap</td><td><code>continuacion</code></td><td><code>inicio_ojo</code></td><td>H@0.3</td></tr>
+            <tr><td>T1</td><td>"veo una X"</td><td><code>ambigua</code></td><td><code>repregunta_sin_cambio</code></td><td>Sin cambio</td></tr>
+            <tr><td>T2</td><td>"veo una H"</td><td><code>correcta</code></td><td><code>siguiente_optotipo</code></td><td>Nueva letra @ <strong>0.2</strong></td></tr>
+            <tr><td>…</td><td>2.º acierto mismo logMAR</td><td><code>correcta</code></td><td><code>cierre_ojo_R_e_inicio_L</code></td><td>L H@0.3</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="responsabilidades">8. Separación de responsabilidades</h2>
       <div class="table-wrap"><table>
-        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <thead><tr><th>Decisión</th><th>Responsable</th></tr></thead>
         <tbody>
-          <tr><td>Flujo</td><td>pasos → contextoVoz → esperar o re-llamar</td></tr>
-          <tr><td>Transcripción</td><td>Literal; no normalizar por pantalla</td></tr>
-          <tr><td>Confianza</td><td>Calidad de audio (0.85–1 claro)</td></tr>
-          <tr><td>Aislamiento</td><td>Solo recibe ok, pasos, contextoVoz</td></tr>
+          <tr><td>¿Modo bootstrap o respuesta?</td><td><code>detectarModoTurno</code> (código)</td></tr>
+          <tr><td>¿Qué dijo el paciente?</td><td>Intérprete (solo modo respuesta)</td></tr>
+          <tr><td>¿logMAR, ojos, MQTT?</td><td>Protocolo (fase agudeza)</td></tr>
+          <tr><td>¿Propuesta válida?</td><td>Auditor</td></tr>
+          <tr><td>¿Texto y esperar respuesta?</td><td>Comunicación (o fallback)</td></tr>
+          <tr><td>¿Transcripción al servidor?</td><td>Oftalmólogo Virtual</td></tr>
+          <tr><td>¿Persistir y publicar?</td><td>Servidor</td></tr>
         </tbody>
       </table></div>
 
-      <h2 id="knowledge">5. Mapa knowledge ↔ agente</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Archivo</th><th>Agente</th><th>Contenido</th></tr></thead>
-        <tbody>
-          <tr><td><code>interpretacion-paciente.md</code></td><td>Intérprete</td><td>Clasificaciones, fonética, confianza</td></tr>
-          <tr><td><code>protocolo-agudeza-estado.md</code></td><td>Protocolo (+ auditor)</td><td>Estado, contadores, R→L</td></tr>
-          <tr><td><code>dispositivos.md</code></td><td>Protocolo (+ auditor)</td><td>MQTT foróptero/TV</td></tr>
-          <tr><td><code>auditoria-protocolo.md</code></td><td>Auditor</td><td>Anti-patrones, checklist</td></tr>
-          <tr><td><code>comunicacion-paciente.md</code></td><td>Comunicación</td><td>Plantillas, contextoVoz</td></tr>
-        </tbody>
-      </table></div>
-      <p>Los <code>prompts/*.md</code> son la cápsula de rol; el knowledge es la especificación extendida.</p>
-
-      <h2 id="flujo">6. Flujo de datos en un turno típico</h2>
-      <pre class="flow">Paciente habla
-    → Voz: respuestaPaciente + confianza
-        → Intérprete: clasificacion (+ letraElegida si aplica)
-            → Protocolo: estadoPatch + acciones + evento
-                → Auditor: aprobado?
-                    → [si no] Protocolo con feedback (máx. 1 vez)
-                    → [si sí] Comunicación: mensajesPaciente + contextoVoz
-            → Servidor: patch estado + MQTT + historial
-    → Voz: lee pasos[].mensaje según contextoVoz</pre>
-      <p><strong>Caso excepcional:</strong> auditor rechaza tras reintento → fallback repregunta sin MQTT.</p>
-
-      <h2 id="responsabilidades">7. Separación de responsabilidades</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Decisión</th><th>Quién</th></tr></thead>
-        <tbody>
-          <tr><td>¿Qué dijo el paciente (lingüística)?</td><td>Intérprete</td></tr>
-          <tr><td>¿logMAR, ojos y hardware?</td><td>Protocolo</td></tr>
-          <tr><td>¿Cumple reglas POC?</td><td>Auditor</td></tr>
-          <tr><td>¿Qué se dice y esperar respuesta?</td><td>Comunicación</td></tr>
-          <tr><td>¿Transcripción y llamada HTTP?</td><td>Oftalmólogo Virtual</td></tr>
-          <tr><td>¿Persistencia y MQTT?</td><td>Servidor</td></tr>
-        </tbody>
-      </table></div>
-
-      <h2 id="archivos">8. Referencias de archivos</h2>
+      <h2 id="archivos">9. Archivos y documentación</h2>
       <div class="table-wrap"><table>
         <thead><tr><th>Tipo</th><th>Ruta</th></tr></thead>
         <tbody>
-          <tr><td>Orquestación</td><td><code>reference/foroptero-orchestrator/pipelineTurno.js</code></td></tr>
-          <tr><td>Agente voz</td><td><code>src/app/agentConfigs/chatSupervisor/index.ts</code></td></tr>
-          <tr><td>Prompts</td><td><code>reference/foroptero-orchestrator/prompts/{…}.md</code></td></tr>
-          <tr><td>Knowledge</td><td><code>reference/foroptero-orchestrator/knowledge/*.md</code></td></tr>
+          <tr><td>Orquestación</td><td><code>pipelineTurno.js</code>, <code>orquestadorExamen.js</code></td></tr>
+          <tr><td>Estado</td><td><code>estadoExamen.js</code></td></tr>
+          <tr><td>Agents LLM</td><td><code>agents/{interprete,protocolo,auditor,comunicacion}.js</code></td></tr>
+          <tr><td>Knowledge loader</td><td><code>lib/knowledge.js</code>, <code>lib/estimulo.js</code>, <code>lib/agentModels.js</code></td></tr>
+          <tr><td>MQTT</td><td><code>ejecutarAcciones.js</code></td></tr>
+          <tr><td>Voz</td><td><code>src/app/agentConfigs/chatSupervisor/index.ts</code></td></tr>
+          <tr><td>Prueba HTTP</td><td><code>testAgent.js</code> (<code>npm run test:agent</code>, escenario <code>bootstrap</code>)</td></tr>
+          <tr><td>Diseño</td><td><code>reference/DISENO_AGENTE_INTERMEDIO.md</code></td></tr>
+          <tr><td>Mitigación / escala</td><td><code>reference/PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md</code></td></tr>
+          <tr><td>Bootstrap</td><td><code>reference/PLAN_BOOTSTRAP_EXAMEN.md</code></td></tr>
         </tbody>
       </table></div>
 
-      <footer>Documentación de análisis. No modifica código ni comportamiento en runtime.</footer>
+      <footer>
+        Documentación de referencia. No modifica runtime.
+        <br />Última revisión alineada a implementación 2026-05-19 (bootstrap, knowledge multi-fase, fallbacks).
+      </footer>
     </main>
   </div>
 

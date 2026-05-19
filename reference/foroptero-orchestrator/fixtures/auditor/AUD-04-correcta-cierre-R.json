@@ -1,0 +1,53 @@
+{
+  "id": "AUD-04",
+  "descripcion": "correcta 2.º acierto en 0.2 → cierre R + inicio L en mismo turno",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "R",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
+        "letrasUsadas": ["H", "O", "T", "E"]
+      }
+    }
+  },
+  "interpretacion": {
+    "clasificacion": "correcta",
+    "letrasCandidatas": ["E"],
+    "letraElegida": "E",
+    "notasInterprete": ""
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "ojoActual": "L",
+      "agudeza": {
+        "R": {
+          "logmarFinal": 0.2,
+          "letraFinal": "E",
+          "aciertosPorLogmar": { "0.3": 1, "0.2": 2, "0.1": 0, "0.0": 0 }
+        },
+        "L": {
+          "logmarActual": 0.3,
+          "letraActual": "H",
+          "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
+          "letrasUsadas": ["H"]
+        }
+      }
+    },
+    "acciones": [
+      {
+        "dispositivo": "foroptero",
+        "config": {
+          "R": { "occlusion": "close" },
+          "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0, "occlusion": "open" }
+        }
+      },
+      { "dispositivo": "tv", "letra": "H", "logmar": 0.3 }
+    ],
+    "evento": "cierre_ojo_R_e_inicio_L"
+  },
+  "esperado": { "aprobado": true }
+}

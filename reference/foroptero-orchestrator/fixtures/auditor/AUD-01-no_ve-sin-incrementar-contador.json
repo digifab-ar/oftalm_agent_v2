@@ -1,0 +1,51 @@
+{
+  "id": "AUD-01",
+  "descripcion": "no_ve @0.1 con aciertosPorLogmar['0.2']=1 previo; propuesta sube a E@0.2 sin incrementar contadores (regresión log T4)",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "R",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.1,
+        "letraActual": "T",
+        "confirmaciones": 0,
+        "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
+        "letrasUsadas": ["H", "O", "T"]
+      },
+      "L": {
+        "logmarActual": null,
+        "letraActual": null,
+        "confirmaciones": 0,
+        "aciertosPorLogmar": { "0.3": 0, "0.2": 0, "0.1": 0, "0.0": 0 },
+        "letrasUsadas": []
+      }
+    }
+  },
+  "interpretacion": {
+    "clasificacion": "no_ve",
+    "letrasCandidatas": [],
+    "letraElegida": null,
+    "notasInterprete": "Paciente indica visión borrosa sin nombrar letra concreta."
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "fase": "agudeza",
+      "ojoActual": "R",
+      "agudeza": {
+        "R": {
+          "logmarActual": 0.2,
+          "letraActual": "E",
+          "confirmaciones": 0,
+          "aciertosPorLogmar": { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 },
+          "letrasUsadas": ["H", "O", "T", "E"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "E", "logmar": 0.2 }],
+    "evento": "siguiente_optotipo",
+    "detalleEvento": {},
+    "razonamientoProtocolo": "no_ve en 0.1: subir a 0.2, letra E, sin incrementar contadores."
+  },
+  "esperado": { "aprobado": true }
+}
