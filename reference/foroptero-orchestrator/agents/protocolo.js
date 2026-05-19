@@ -2,8 +2,14 @@ import { cargarSystemAgente } from '../lib/knowledge.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { PROTOCOLO_SCHEMA } from './schemas.js';
 
-function construirUser(estado, interpretacion, feedbackAuditor = null) {
-  const partes = [
+function construirUser(estado, interpretacion, feedbackAuditor = null, modo) {
+  const partes = [];
+
+  if (modo) {
+    partes.push('## Modo del turno', `modo: ${modo}`);
+  }
+
+  partes.push(
     '## Estado actual del examen',
     '```json',
     JSON.stringify(estado, null, 2),
@@ -12,7 +18,7 @@ function construirUser(estado, interpretacion, feedbackAuditor = null) {
     '```json',
     JSON.stringify(interpretacion, null, 2),
     '```'
-  ];
+  );
 
   if (feedbackAuditor) {
     partes.push(
@@ -46,11 +52,13 @@ export function normalizarProtocolo(parsed) {
 export async function ejecutarProtocolo(
   estado,
   interpretacion,
-  feedbackAuditor = null
+  feedbackAuditor = null,
+  options = {}
 ) {
+  const { modo } = options;
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('protocolo'),
-    user: construirUser(estado, interpretacion, feedbackAuditor),
+    user: construirUser(estado, interpretacion, feedbackAuditor, modo),
     schema: PROTOCOLO_SCHEMA,
     schemaName: 'agente_protocolo',
     agente: 'protocolo'

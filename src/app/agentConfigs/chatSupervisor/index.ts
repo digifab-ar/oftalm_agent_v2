@@ -45,6 +45,10 @@ Al llamar consultarExamen con 'respuestaPaciente':
 | continuar_sin_respuesta | Decí todos los mensajes; después llamá consultarExamen sin parámetros |
 | inicio | Igual que primer turno: decí mensajes y seguí contextoVoz |
 
+# REGLA CRÍTICA — Primer turno (bootstrap)
+- Al arrancar la conversación, llamá consultarExamen **una vez sin parámetros** antes de enviar cualquier respuestaPaciente, aunque el paciente ya haya hablado (ej. dijo "iniciar").
+- En ese primer call no mandés la frase del paciente; el backend ejecuta el bootstrap clínico. Después de pronunciar los mensajes del turno, ya podés usar transcripción literal + confianza en los turnos siguientes.
+
 # Flujo
 1. Al arrancar, llamá consultarExamen una vez sin parámetros.
 2. Decí en orden todos los pasos tipo hablar.

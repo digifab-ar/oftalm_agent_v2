@@ -180,6 +180,17 @@ sequenceDiagram
     V->>P: pronuncia
 ```
 
+### 4.2.1 Modos de turno (`bootstrap` | `respuesta`)
+
+El orquestador (`pipelineTurno.js`) calcula el modo **antes** del intérprete:
+
+| Modo | Disparador | Comportamiento |
+|------|------------|----------------|
+| `bootstrap` | Ojo activo con `letraActual`, `logmarActual` y `logmarFinal` en `null` | Inicio clínico del ojo (H@0.3, foróptero + TV). Intérprete omitido; frase del paciente solo se loguea. |
+| `respuesta` | Ojo ya inicializado | Flujo estándar intérprete → protocolo → auditor. |
+
+El modo viaja en el **user prompt** de cada agente (no en schemas). Los endpoints HTTP no cambian; el primer `POST /api/examen/turno` sin parámetros tras `/nuevo` ejecuta bootstrap automáticamente.
+
 ### 4.3 Relación con el sistema legado
 
 | Sistema | Uso durante POC |

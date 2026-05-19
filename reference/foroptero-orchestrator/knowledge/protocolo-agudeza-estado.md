@@ -45,6 +45,8 @@ Globales: `fase`, `ojoActual`, `finalizado`.
 
 ## Inicio del test por ojo
 
+Este patrón se aplica cuando el orquestador indica `modo: bootstrap` en el user (estado clínico vacío del ojo activo: `letraActual`, `logmarActual` y `logmarFinal` en null).
+
 1. Foróptero: RX del ojo en test + oclusión del contralateral (**dispositivos.md**).
 2. `logmarActual`: **0.3**
 3. `letraActual`: **H**

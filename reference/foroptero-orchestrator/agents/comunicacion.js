@@ -19,8 +19,14 @@ function estadoResumido(estado) {
   };
 }
 
-function construirUser(interpretacion, decisionProtocolo, estado) {
-  return [
+function construirUser(interpretacion, decisionProtocolo, estado, modo) {
+  const partes = [];
+
+  if (modo) {
+    partes.push('## Modo del turno', `modo: ${modo}`);
+  }
+
+  partes.push(
     '## Interpretación',
     '```json',
     JSON.stringify(interpretacion, null, 2),
@@ -41,7 +47,9 @@ function construirUser(interpretacion, decisionProtocolo, estado) {
     JSON.stringify(estadoResumido(estado), null, 2),
     '```',
     'Redactá mensajes y devolvé el JSON del schema.'
-  ].join('\n\n');
+  );
+
+  return partes.join('\n\n');
 }
 
 export function normalizarComunicacion(parsed) {
@@ -66,11 +74,13 @@ export function normalizarComunicacion(parsed) {
 export async function ejecutarComunicacion(
   interpretacion,
   decisionProtocolo,
-  estado
+  estado,
+  options = {}
 ) {
+  const { modo } = options;
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('comunicacion'),
-    user: construirUser(interpretacion, decisionProtocolo, estado),
+    user: construirUser(interpretacion, decisionProtocolo, estado, modo),
     schema: COMUNICACION_SCHEMA,
     schemaName: 'agente_comunicacion',
     agente: 'comunicacion'

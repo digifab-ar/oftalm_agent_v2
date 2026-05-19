@@ -2,8 +2,14 @@ import { cargarSystemAgente } from '../lib/knowledge.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { AUDITOR_SCHEMA } from './schemas.js';
 
-function construirUser(estadoAntes, interpretacion, propuestaProtocolo) {
-  return [
+function construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo) {
+  const partes = [];
+
+  if (modo) {
+    partes.push('## Modo del turno', `modo: ${modo}`);
+  }
+
+  partes.push(
     '## Estado antes del patch',
     '```json',
     JSON.stringify(estadoAntes, null, 2),
@@ -17,7 +23,9 @@ function construirUser(estadoAntes, interpretacion, propuestaProtocolo) {
     JSON.stringify(propuestaProtocolo, null, 2),
     '```',
     'Auditá y devolvé el JSON del schema.'
-  ].join('\n\n');
+  );
+
+  return partes.join('\n\n');
 }
 
 export function normalizarAuditoria(parsed) {
@@ -31,11 +39,13 @@ export function normalizarAuditoria(parsed) {
 export async function ejecutarAuditor(
   estadoAntes,
   interpretacion,
-  propuestaProtocolo
+  propuestaProtocolo,
+  options = {}
 ) {
+  const { modo } = options;
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('auditor'),
-    user: construirUser(estadoAntes, interpretacion, propuestaProtocolo),
+    user: construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo),
     schema: AUDITOR_SCHEMA,
     schemaName: 'agente_auditor',
     agente: 'auditor'

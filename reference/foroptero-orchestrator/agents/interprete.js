@@ -13,13 +13,19 @@ function estadoParaInterprete(estado) {
   };
 }
 
-function construirUser(estado, respuestaPaciente, confianza) {
-  const partes = [
+function construirUser(estado, respuestaPaciente, confianza, modo) {
+  const partes = [];
+
+  if (modo) {
+    partes.push('## Modo del turno', `modo: ${modo}`);
+  }
+
+  partes.push(
     '## Contexto del ojo en test',
     '```json',
     JSON.stringify(estadoParaInterprete(estado), null, 2),
     '```'
-  ];
+  );
 
   if (
     respuestaPaciente != null &&
@@ -41,6 +47,15 @@ function construirUser(estado, respuestaPaciente, confianza) {
   return partes.join('\n\n');
 }
 
+export function interpretacionBootstrapHardcoded() {
+  return {
+    clasificacion: 'continuacion',
+    letrasCandidatas: [],
+    letraElegida: null,
+    notasInterprete: 'turno bootstrap'
+  };
+}
+
 export function normalizarInterpretacion(parsed) {
   return {
     clasificacion: parsed.clasificacion,
@@ -52,10 +67,20 @@ export function normalizarInterpretacion(parsed) {
   };
 }
 
-export async function ejecutarInterprete(estado, respuestaPaciente, confianza) {
+export async function ejecutarInterprete(
+  estado,
+  respuestaPaciente,
+  confianza,
+  options = {}
+) {
+  const { modo } = options;
+  if (modo === 'bootstrap') {
+    return interpretacionBootstrapHardcoded();
+  }
+
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('interprete'),
-    user: construirUser(estado, respuestaPaciente, confianza),
+    user: construirUser(estado, respuestaPaciente, confianza, modo),
     schema: INTERPRETE_SCHEMA,
     schemaName: 'agente_interprete',
     agente: 'interprete'

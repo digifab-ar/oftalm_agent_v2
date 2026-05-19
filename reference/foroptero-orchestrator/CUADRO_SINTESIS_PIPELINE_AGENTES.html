@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuadro síntesis — Pipeline multi-agente (POC agudeza)</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --surface: #fff;
+      --text: #1a1d23;
+      --muted: #5c6370;
+      --border: #dde1e8;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --header-bg: #1e3a5f;
+      --header-text: #fff;
+      --row-alt: #f9fafb;
+      --code-bg: #eef1f6;
+      --warn-bg: #fffbeb;
+      --warn-border: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 1.25rem 1rem;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    nav.toc h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    nav.toc a {
+      display: block;
+      padding: 0.35rem 0.5rem;
+      color: var(--accent);
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    nav.toc a:hover { background: var(--accent-soft); }
+
+    main {
+      padding: 2rem 2.5rem 3rem;
+      max-width: 1200px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 0.5rem;
+      line-height: 1.25;
+    }
+
+    .lead { color: var(--muted); margin-bottom: 1.5rem; }
+
+    h2 {
+      font-size: 1.35rem;
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin: 1.75rem 0 0.75rem;
+      color: #2d3748;
+    }
+
+    p { margin: 0.75rem 0; }
+
+    ul { margin: 0.5rem 0 1rem; padding-left: 1.25rem; }
+
+    code, .mono {
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9375rem;
+    }
+
+    th, td {
+      padding: 0.65rem 0.85rem;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: var(--row-alt); }
+    tbody tr:hover { background: var(--accent-soft); }
+
+    table.compact { font-size: 0.875rem; }
+    table.compact th, table.compact td { padding: 0.5rem 0.7rem; }
+
+    /* Tabla ancha: columnas con ancho mínimo legible */
+    table.wide th:nth-child(1) { width: 2.5rem; }
+    table.wide th:nth-child(2) { min-width: 7rem; }
+    table.wide th:nth-child(3) { min-width: 10rem; }
+    table.wide th:nth-child(4) { min-width: 12rem; }
+    table.wide th:nth-child(5) { min-width: 9rem; }
+    table.wide th:nth-child(6) { min-width: 9rem; }
+    table.wide th:nth-child(7) { min-width: 10rem; }
+    table.wide th:nth-child(8) { min-width: 9rem; }
+
+    blockquote {
+      margin: 1rem 0;
+      padding: 0.75rem 1rem;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+    }
+
+    blockquote p { margin: 0; font-weight: 500; }
+
+    .callout {
+      padding: 0.85rem 1rem;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: 6px;
+      margin: 1rem 0;
+    }
+
+    pre.flow {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+    }
+
+    .diagram {
+      margin: 1.5rem 0;
+      padding: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .agent-card {
+      display: grid;
+      gap: 0.75rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .agent-card article {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+    }
+
+    .agent-card h4 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      color: var(--header-bg);
+    }
+
+    .agent-card .meta {
+      display: grid;
+      grid-template-columns: 7rem 1fr;
+      gap: 0.35rem 0.75rem;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    .agent-card .meta dt {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .agent-card .meta dd { margin: 0; }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.toc {
+        position: relative;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      main { padding: 1.25rem 1rem 2rem; }
+    }
+
+    @media print {
+      .layout { display: block; }
+      nav.toc { display: none; }
+      .table-wrap { overflow: visible; }
+      body { background: #fff; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc" aria-label="Índice">
+      <h2>Contenido</h2>
+      <a href="#general">1. Vista general</a>
+      <a href="#orden">2. Orden de ejecución</a>
+      <a href="#sintesis">3. Cuadro por agente</a>
+      <a href="#actividades">4. Actividades detalladas</a>
+      <a href="#knowledge">5. Mapa knowledge</a>
+      <a href="#flujo">6. Flujo de datos</a>
+      <a href="#responsabilidades">7. Responsabilidades</a>
+      <a href="#archivos">8. Archivos</a>
+    </nav>
+
+    <main>
+      <h1>Cuadro síntesis — Pipeline multi-agente</h1>
+      <p class="lead">Examen de agudeza POC · Documento de referencia (solo lectura)</p>
+
+      <p>Resume roles, actividades, knowledge y orden de ejecución a partir de:</p>
+      <ul>
+        <li>Orquestación: <code>pipelineTurno.js</code></li>
+        <li>Prompts: <code>prompts/interprete.md</code>, <code>protocolo.md</code>, <code>auditor.md</code>, <code>comunicacion.md</code></li>
+        <li>Knowledge: <code>knowledge/*.md</code></li>
+        <li>Agente de voz: <code>src/app/agentConfigs/chatSupervisor/index.ts</code></li>
+      </ul>
+
+      <h2 id="general">1. Vista general del sistema</h2>
+      <p>El examen se divide en <strong>dos capas</strong>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Capa</th>
+              <th>Componente</th>
+              <th>Responsabilidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Voz (cliente)</strong></td>
+              <td><code>chatAgent</code> — Oftalmólogo Virtual</td>
+              <td>Conversar con el paciente, transcribir audio literal, llamar al backend vía <code>consultarExamen</code>. <strong>No</strong> interpreta clínica ni controla dispositivos.</td>
+            </tr>
+            <tr>
+              <td><strong>Backend</strong></td>
+              <td>Pipeline en <code>procesarTurnoPipeline</code></td>
+              <td>Cuatro agentes LLM en cadena + aplicación de estado y MQTT.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>El agente de voz solo recibe del backend: <code>pasos[].mensaje</code>, <code>contextoVoz</code> y <code>ok</code>. El razonamiento interno no se expone al paciente.</p>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart TB
+  subgraph cliente["Cliente — chatSupervisor"]
+    V[Oftalmólogo Virtual]
+    V -->|POST /api/examen/turno| API
+    API -->|pasos, contextoVoz| V
+  end
+  subgraph pipeline["Backend — pipelineTurno.js"]
+    API[procesarTurnoPipeline]
+    I[Intérprete]
+    P[Protocolo]
+    A[Auditor]
+    C[Comunicación]
+    S[(Estado examen)]
+    M[MQTT foróptero + TV]
+    API --> I --> P --> A
+    A -->|rechazado, reintento ≤1| P
+    A -->|aprobado| C
+    A -->|fallo tras reintentos| FB[Fallback repregunta]
+    C --> S
+    FB --> S
+    S --> M
+  end
+  V <-->|audio / habla| Paciente[(Paciente)]
+        </pre>
+      </div>
+
+      <h2 id="orden">2. Orden de ejecución</h2>
+
+      <h3>2.1 Por turno en el backend (<code>procesarTurnoPipeline</code>)</h3>
+      <div class="table-wrap">
+        <table class="compact">
+          <thead>
+            <tr>
+              <th>Paso</th>
+              <th>Agente / acción</th>
+              <th>Condición</th>
+              <th>Qué ocurre después</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>0</td><td>Cargar estado</td><td>Siempre</td><td><code>estadoAntes = obtenerEstadoParaOrquestador()</code></td></tr>
+            <tr><td>1</td><td><strong>Intérprete</strong></td><td>Siempre</td><td>Clasificación lingüística (<code>respuestaPaciente</code> + <code>confianza</code>)</td></tr>
+            <tr><td>2</td><td><strong>Protocolo</strong></td><td>Siempre (1.ª vez)</td><td>Propuesta: <code>estadoPatch</code>, <code>acciones</code>, <code>evento</code></td></tr>
+            <tr><td>3</td><td><strong>Auditor</strong></td><td>Tras cada propuesta</td><td>Aprueba o rechaza</td></tr>
+            <tr><td>3b</td><td><strong>Protocolo</strong> (reintento)</td><td>Auditor rechaza y reintentos &lt; 1</td><td>Protocolo recibe <code>feedback</code> con violaciones</td></tr>
+            <tr><td>4a</td><td><strong>Comunicación</strong></td><td>Auditor <strong>aprobó</strong></td><td>Mensajes al paciente + <code>contextoVoz</code></td></tr>
+            <tr><td>4b</td><td><strong>Fallback</strong></td><td>Auditor rechazó tras reintentos</td><td>Repregunta fija (sin LLM comunicación)</td></tr>
+            <tr><td>5</td><td><strong>Servidor</strong></td><td>Siempre</td><td>Patch → MQTT → historial</td></tr>
+            <tr><td>6</td><td>Respuesta HTTP</td><td>Siempre</td><td><code>pasos</code>, <code>contextoVoz</code>, traza opcional</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <blockquote>
+        <p>Intérprete → Protocolo → Auditor → [patch + MQTT] → Comunicación</p>
+      </blockquote>
+      <p>El bucle protocolo ↔ auditor permite como máximo <strong>1 reintento</strong> (<code>MAX_REINTENTOS_PROTOCOLO = 1</code>).</p>
+
+      <h3>2.2 Bucle conversacional del agente de voz</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Momento</th>
+              <th>Llamada a <code>consultarExamen</code></th>
+              <th>Comportamiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Inicio de sesión</td><td>Sin parámetros</td><td>Primeros mensajes y <code>contextoVoz</code></td></tr>
+            <tr><td>Tras hablar al paciente</td><td>Según <code>contextoVoz</code> anterior</td><td>Ver tabla siguiente</td></tr>
+            <tr><td>Paciente habló</td><td><code>respuestaPaciente</code> + <code>confianza</code></td><td>Dispara pipeline completo en backend</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th><code>contextoVoz</code></th>
+              <th>Acción del agente de voz</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>inicio</code></td><td>Decir mensajes; seguir instrucciones del turno</td></tr>
+            <tr><td><code>esperar_respuesta</code></td><td>Decir mensajes; <strong>esperar</strong> al paciente; luego transcripción + confianza</td></tr>
+            <tr><td><code>continuar_sin_respuesta</code></td><td>Decir todos los mensajes; llamar de nuevo <strong>sin</strong> parámetros</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>Regla crítica:</strong> el texto en <code>pasos[].mensaje</code> es lo <strong>único</strong> que puede decir al paciente (copia literal). No envía clasificaciones clínicas ni letras corregidas.
+      </div>
+
+      <h2 id="sintesis">3. Cuadro síntesis por agente</h2>
+      <p>La tabla ancha se presenta en tarjetas para lectura cómoda; abajo hay versión tabular con scroll horizontal.</p>
+
+      <div class="agent-card">
+        <article>
+          <h4>— Oftalmólogo Virtual (<code>chatSupervisor</code>)</h4>
+          <p><strong>Rol:</strong> Interfaz de voz con el paciente.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd>Saludar y guiar; transcribir literal; confianza de audio; <code>consultarExamen</code>; leer mensajes en orden.</dd>
+            <dt>Knowledge</dt><dd><code>index.ts</code> (no usa .md del orchestrator)</dd>
+            <dt>Entradas</dt><dd>Audio; HTTP (<code>pasos</code>, <code>contextoVoz</code>)</dd>
+            <dt>Salidas</dt><dd><code>respuestaPaciente</code>, <code>confianza</code> o body vacío</dd>
+            <dt>No hace</dt><dd>Interpretar clínica; normalizar letras; MQTT; inventar mensajes.</dd>
+          </dl>
+        </article>
+        <article>
+          <h4>1 — Intérprete</h4>
+          <p><strong>Rol:</strong> Clasificación lingüística del paciente.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd>Fonética Sloan; <code>letraActual</code>; <code>confianza_baja</code> si &lt; 0.7; <code>continuacion</code> sin respuesta.</dd>
+            <dt>Knowledge</dt><dd><code>interpretacion-paciente.md</code></dd>
+            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>respuestaPaciente</code>, <code>confianza</code></dd>
+            <dt>Salidas</dt><dd><code>clasificacion</code>, <code>letrasCandidatas</code>, <code>letraElegida</code>, <code>notasInterprete</code></dd>
+            <dt>No hace</dt><dd>Estado, MQTT, mensajes, cierre de ojo.</dd>
+          </dl>
+        </article>
+        <article>
+          <h4>2 — Protocolo</h4>
+          <p><strong>Rol:</strong> Transición clínica y dispositivos.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd><code>aciertosPorLogmar</code>; cierre ≥ 2; logMAR; R→L mismo turno; MQTT foróptero → TV.</dd>
+            <dt>Knowledge</dt><dd><code>protocolo-agudeza-estado.md</code>, <code>dispositivos.md</code></dd>
+            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>interpretacion</code>, <code>feedback</code> (reintento)</dd>
+            <dt>Salidas</dt><dd><code>estadoPatch</code>, <code>acciones</code>, <code>evento</code>, <code>detalleEvento</code>, <code>razonamientoProtocolo</code></dd>
+            <dt>No hace</dt><dd>Re-clasificar; mensajes al paciente.</dd>
+          </dl>
+        </article>
+        <article>
+          <h4>3 — Auditor</h4>
+          <p><strong>Rol:</strong> Validar propuesta antes de aplicar.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd>Anti-patrones; checklist; R→L; ambigua sin acciones.</dd>
+            <dt>Knowledge</dt><dd><code>auditoria-protocolo.md</code></dd>
+            <dt>Entradas</dt><dd><code>estadoAntes</code>, <code>interpretacion</code>, <code>propuestaProtocolo</code></dd>
+            <dt>Salidas</dt><dd><code>aprobado</code>, <code>violaciones</code>, <code>correccionSugerida</code></dd>
+            <dt>No hace</dt><dd>Patch alternativo; mensajes; re-clasificar (salvo grave).</dd>
+          </dl>
+        </article>
+        <article>
+          <h4>4 — Comunicación</h4>
+          <p><strong>Rol:</strong> Texto al paciente y modo de voz.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd>Plantillas rioplatenses; coherencia con <code>evento</code>; <code>contextoVoz</code>.</dd>
+            <dt>Knowledge</dt><dd><code>comunicacion-paciente.md</code></dd>
+            <dt>Entradas</dt><dd><code>interpretacion</code>, evento protocolo, estado resumido</dd>
+            <dt>Salidas</dt><dd><code>mensajesPaciente</code>, <code>contextoVoz</code>, <code>razonamientoComunicacion</code></dd>
+            <dt>No hace</dt><dd>Estado; MQTT; re-interpretar.</dd>
+          </dl>
+        </article>
+        <article>
+          <h4>— Servidor (no LLM)</h4>
+          <p><strong>Rol:</strong> Persistencia y hardware.</p>
+          <dl class="meta">
+            <dt>Actividades</dt><dd>Patch, MQTT, historial, armar <code>pasos</code> tipo hablar.</dd>
+            <dt>Salidas</dt><dd>HTTP al cliente de voz</dd>
+          </dl>
+        </article>
+      </div>
+
+      <details>
+        <summary style="cursor:pointer; font-weight:600; margin-bottom:0.5rem;">Ver misma información en tabla (scroll horizontal)</summary>
+        <div class="table-wrap">
+          <table class="wide compact">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Agente</th>
+                <th>Rol</th>
+                <th>Actividades</th>
+                <th>Knowledge</th>
+                <th>Entradas</th>
+                <th>Salidas</th>
+                <th>No hace</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>—</td>
+                <td>Oftalmólogo Virtual</td>
+                <td>Voz / UI</td>
+                <td>Conversar, transcribir, confianza audio, consultarExamen</td>
+                <td>index.ts</td>
+                <td>Audio; pasos, contextoVoz</td>
+                <td>respuestaPaciente, confianza</td>
+                <td>Clínica, MQTT, inventar mensajes</td>
+              </tr>
+              <tr>
+                <td>1</td>
+                <td>Intérprete</td>
+                <td>Lingüística</td>
+                <td>Sloan, letraActual, confianza_baja</td>
+                <td>interpretacion-paciente.md</td>
+                <td>estadoAntes, respuesta, confianza</td>
+                <td>clasificacion, letras…</td>
+                <td>Estado, MQTT, mensajes</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Protocolo</td>
+                <td>Estado + HW</td>
+                <td>Contadores, cierre, R→L, acciones</td>
+                <td>protocolo + dispositivos</td>
+                <td>estado, interpretacion, feedback</td>
+                <td>patch, acciones, evento</td>
+                <td>Re-clasificar, mensajes</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Auditor</td>
+                <td>QA protocolo</td>
+                <td>Checklist, anti-patrones</td>
+                <td>auditoria-protocolo.md</td>
+                <td>estado, interpretacion, propuesta</td>
+                <td>aprobado, violaciones</td>
+                <td>Patch, mensajes</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Comunicación</td>
+                <td>Paciente</td>
+                <td>Plantillas, contextoVoz</td>
+                <td>comunicacion-paciente.md</td>
+                <td>interpretacion, evento</td>
+                <td>mensajesPaciente, contextoVoz</td>
+                <td>Estado, MQTT</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <h2 id="actividades">4. Actividades detalladas por agente</h2>
+
+      <h3>4.1 Intérprete</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Clasificar</td><td><code>correcta</code>, <code>incorrecta</code>, <code>no_ve</code>, <code>ambigua</code>, <code>confianza_baja</code>, <code>frase_paciente_no_clinica</code>, <code>continuacion</code></td></tr>
+          <tr><td>Fonética Sloan</td><td>H, O, T, E, C, F, Z, L, P, D; pares H↔C, E↔C</td></tr>
+          <tr><td>Contexto estado</td><td><code>ojoActual</code>, <code>letraActual</code></td></tr>
+          <tr><td>Umbral</td><td>confianza &lt; 0.7 → <code>confianza_baja</code></td></tr>
+          <tr><td>Turno vacío</td><td><code>continuacion</code>, <code>letrasCandidatas: []</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>4.2 Protocolo</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Correcta</td><td>aciertos += 1; si ≥ 2 → cierre (sin TV extra en ese ojo)</td></tr>
+          <tr><td>Correcta sin cierre</td><td>Bajar logMAR o rotar 0.0 + <code>tv</code></td></tr>
+          <tr><td>Incorrecta / no_ve</td><td>Subir un paso o rotar en 0.3</td></tr>
+          <tr><td>Ambigua / confianza_baja</td><td><code>acciones: []</code>, <code>repregunta_sin_cambio</code></td></tr>
+          <tr><td>Cierre R</td><td>Mismo turno: L + foróptero + TV H@0.3</td></tr>
+          <tr><td>Cierre L</td><td><code>fase: finalizado</code> solo con L cerrado</td></tr>
+          <tr><td>Acciones</td><td>Foróptero, luego TV</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>4.3 Auditor</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Anti-patrones</td><td>Contador por logMAR; no bajar si cierre</td></tr>
+          <tr><td>Checklist</td><td>R→L MQTT; un paso subida; finalizado solo L</td></tr>
+          <tr><td>Rechazo</td><td>violaciones + correccionSugerida al protocolo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>4.4 Comunicación</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Mensajes</td><td>1–2 frases, rioplatense, sin jerga</td></tr>
+          <tr><td>contextoVoz</td><td>inicio / esperar_respuesta / continuar_sin_respuesta</td></tr>
+          <tr><td>Coherencia</td><td>Alineado con <code>evento</code> del protocolo</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>4.5 Oftalmólogo Virtual</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
+        <tbody>
+          <tr><td>Flujo</td><td>pasos → contextoVoz → esperar o re-llamar</td></tr>
+          <tr><td>Transcripción</td><td>Literal; no normalizar por pantalla</td></tr>
+          <tr><td>Confianza</td><td>Calidad de audio (0.85–1 claro)</td></tr>
+          <tr><td>Aislamiento</td><td>Solo recibe ok, pasos, contextoVoz</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2 id="knowledge">5. Mapa knowledge ↔ agente</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Archivo</th><th>Agente</th><th>Contenido</th></tr></thead>
+        <tbody>
+          <tr><td><code>interpretacion-paciente.md</code></td><td>Intérprete</td><td>Clasificaciones, fonética, confianza</td></tr>
+          <tr><td><code>protocolo-agudeza-estado.md</code></td><td>Protocolo (+ auditor)</td><td>Estado, contadores, R→L</td></tr>
+          <tr><td><code>dispositivos.md</code></td><td>Protocolo (+ auditor)</td><td>MQTT foróptero/TV</td></tr>
+          <tr><td><code>auditoria-protocolo.md</code></td><td>Auditor</td><td>Anti-patrones, checklist</td></tr>
+          <tr><td><code>comunicacion-paciente.md</code></td><td>Comunicación</td><td>Plantillas, contextoVoz</td></tr>
+        </tbody>
+      </table></div>
+      <p>Los <code>prompts/*.md</code> son la cápsula de rol; el knowledge es la especificación extendida.</p>
+
+      <h2 id="flujo">6. Flujo de datos en un turno típico</h2>
+      <pre class="flow">Paciente habla
+    → Voz: respuestaPaciente + confianza
+        → Intérprete: clasificacion (+ letraElegida si aplica)
+            → Protocolo: estadoPatch + acciones + evento
+                → Auditor: aprobado?
+                    → [si no] Protocolo con feedback (máx. 1 vez)
+                    → [si sí] Comunicación: mensajesPaciente + contextoVoz
+            → Servidor: patch estado + MQTT + historial
+    → Voz: lee pasos[].mensaje según contextoVoz</pre>
+      <p><strong>Caso excepcional:</strong> auditor rechaza tras reintento → fallback repregunta sin MQTT.</p>
+
+      <h2 id="responsabilidades">7. Separación de responsabilidades</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Decisión</th><th>Quién</th></tr></thead>
+        <tbody>
+          <tr><td>¿Qué dijo el paciente (lingüística)?</td><td>Intérprete</td></tr>
+          <tr><td>¿logMAR, ojos y hardware?</td><td>Protocolo</td></tr>
+          <tr><td>¿Cumple reglas POC?</td><td>Auditor</td></tr>
+          <tr><td>¿Qué se dice y esperar respuesta?</td><td>Comunicación</td></tr>
+          <tr><td>¿Transcripción y llamada HTTP?</td><td>Oftalmólogo Virtual</td></tr>
+          <tr><td>¿Persistencia y MQTT?</td><td>Servidor</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2 id="archivos">8. Referencias de archivos</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Tipo</th><th>Ruta</th></tr></thead>
+        <tbody>
+          <tr><td>Orquestación</td><td><code>reference/foroptero-orchestrator/pipelineTurno.js</code></td></tr>
+          <tr><td>Agente voz</td><td><code>src/app/agentConfigs/chatSupervisor/index.ts</code></td></tr>
+          <tr><td>Prompts</td><td><code>reference/foroptero-orchestrator/prompts/{…}.md</code></td></tr>
+          <tr><td>Knowledge</td><td><code>reference/foroptero-orchestrator/knowledge/*.md</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <footer>Documentación de análisis. No modifica código ni comportamiento en runtime.</footer>
+    </main>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+</body>
+</html>

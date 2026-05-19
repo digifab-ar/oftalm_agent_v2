@@ -49,6 +49,7 @@ Si `aprobado: false`, listá violaciones concretas y una corrección accionable 
 
 ## Checklist obligatorio (antes de `aprobado: true`)
 
+0. Si el user incluye `modo: bootstrap`: validar patch + acciones contra *Inicio del test por ojo* de **protocolo-agudeza-estado.md** (`H@0.3`, foróptero + TV, `evento: inicio_ojo`). Anti-patrón: aprobar bootstrap sin acciones MQTT o sin patch que setee `logmarActual: 0.3` y `letraActual: H`.
 1. Simulá `aciertosPorLogmar` **después** del patch si la clasificación fue **correcta**.
 2. Si el contador del `logmarActual` (pre-patch o post-patch coherente) queda **≥ 2** tras correcta → debe haber `logmarFinal`/`letraFinal` en ese ojo y **no** `tv` para seguir probando ese ojo.
 3. Si `evento` es `cierre_ojo_R_e_inicio_L` → `acciones` incluye foróptero (L open, R close) y TV `H` @ `0.3`; patch inicializa L con contadores en 0.

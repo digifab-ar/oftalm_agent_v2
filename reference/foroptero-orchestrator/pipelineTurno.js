@@ -11,6 +11,37 @@ import { ejecutarComunicacion } from './agents/comunicacion.js';
 
 const MAX_REINTENTOS_PROTOCOLO = 1;
 
+/**
+ * Detecta si el ojo activo aún no fue inicializado clínicamente (bootstrap).
+ * @param {object} estado
+ * @returns {'bootstrap' | 'respuesta'}
+ */
+export function detectarModoTurno(estado) {
+  const ojo = estado.ojoActual;
+  const agudeza = estado.agudeza?.[ojo];
+  if (!agudeza) {
+    return 'respuesta';
+  }
+  if (
+    agudeza.letraActual == null &&
+    agudeza.logmarActual == null &&
+    agudeza.logmarFinal == null
+  ) {
+    return 'bootstrap';
+  }
+  return 'respuesta';
+}
+
+/** Interpretación fija para turno bootstrap (sin LLM). */
+export function interpretacionBootstrap() {
+  return {
+    clasificacion: 'continuacion',
+    letrasCandidatas: [],
+    letraElegida: null,
+    notasInterprete: 'turno bootstrap'
+  };
+}
+
 function aPasosHablar(mensajes) {
   return mensajes.map((mensaje, i) => ({
     tipo: 'hablar',
@@ -19,12 +50,13 @@ function aPasosHablar(mensajes) {
   }));
 }
 
-function armarRazonamientoInterno(traza) {
+function armarRazonamientoInterno(traza, modo) {
   const i = traza.interpretacion;
   const p = traza.propuestaProtocolo;
   const a = traza.auditoria;
   const c = traza.comunicacion;
   return [
+    `modo: ${modo}`,
     `interpretacion: ${i?.clasificacion ?? '?'}`,
     i?.notasInterprete ? `notas: ${i.notasInterprete}` : null,
     `protocolo evento: ${p?.evento ?? '?'}`,
@@ -37,7 +69,7 @@ function armarRazonamientoInterno(traza) {
     .join('\n');
 }
 
-/** Fallback conservador si el pipeline falla tras reintentos. */
+/** Fallback si hay letra en pantalla y el pipeline falla tras reintentos. */
 function fallbackRepregunta() {
   return {
     propuestaProtocolo: {
@@ -57,19 +89,42 @@ function fallbackRepregunta() {
   };
 }
 
-async function protocoloConAuditoria(estadoAntes, interpretacion) {
+/** Fallback neutro cuando falla el bootstrap (sin asumir letra en pantalla). */
+function fallbackBootstrap() {
+  return {
+    propuestaProtocolo: {
+      estadoPatch: {},
+      acciones: [],
+      evento: 'error_bootstrap',
+      detalleEvento: { motivo: 'fallback_bootstrap' },
+      razonamientoProtocolo: 'fallback: error al iniciar examen'
+    },
+    comunicacion: {
+      mensajesPaciente: [
+        'Hubo un problema al iniciar el examen. Por favor, esperá un momento e intentá de nuevo.'
+      ],
+      contextoVoz: 'esperar_respuesta',
+      razonamientoComunicacion: 'fallback bootstrap'
+    }
+  };
+}
+
+async function protocoloConAuditoria(estadoAntes, interpretacion, modo) {
   let feedback = null;
+  const opciones = { modo };
 
   for (let intento = 0; intento <= MAX_REINTENTOS_PROTOCOLO; intento++) {
     const propuesta = await ejecutarProtocolo(
       estadoAntes,
       interpretacion,
-      feedback
+      feedback,
+      opciones
     );
     const auditoria = await ejecutarAuditor(
       estadoAntes,
       interpretacion,
-      propuesta
+      propuesta,
+      opciones
     );
 
     if (auditoria.aprobado) {
@@ -106,12 +161,16 @@ export async function procesarTurnoPipeline(
     return { ok: false, error: 'Examen no iniciado' };
   }
 
+  const modo = detectarModoTurno(estadoAntes);
+  console.log(`📋 Pipeline modo turno: ${modo}`);
+
   const conf =
     typeof confianza === 'number' && !Number.isNaN(confianza)
       ? Math.min(1, Math.max(0, confianza))
       : 1;
 
   const traza = {
+    modo,
     interpretacion: null,
     propuestaProtocolo: null,
     auditoria: null,
@@ -120,15 +179,21 @@ export async function procesarTurnoPipeline(
   };
 
   try {
-    traza.interpretacion = await ejecutarInterprete(
-      estadoAntes,
-      respuestaPaciente,
-      conf
-    );
+    if (modo === 'bootstrap') {
+      traza.interpretacion = interpretacionBootstrap();
+    } else {
+      traza.interpretacion = await ejecutarInterprete(
+        estadoAntes,
+        respuestaPaciente,
+        conf,
+        { modo }
+      );
+    }
 
     const resultadoProtocolo = await protocoloConAuditoria(
       estadoAntes,
-      traza.interpretacion
+      traza.interpretacion,
+      modo
     );
 
     if (!resultadoProtocolo) {
@@ -143,17 +208,20 @@ export async function procesarTurnoPipeline(
     let comunicacion;
 
     if (traza.falloAuditor) {
-      const fb = fallbackRepregunta();
+      const fb = modo === 'bootstrap' ? fallbackBootstrap() : fallbackRepregunta();
       propuestaAplicar = fb.propuestaProtocolo;
       comunicacion = fb.comunicacion;
       console.warn(
-        '⚠️ Pipeline: auditor rechazó tras reintentos; fallback repregunta'
+        `⚠️ Pipeline (${modo}): auditor rechazó tras reintentos; fallback ${
+          modo === 'bootstrap' ? 'bootstrap' : 'repregunta'
+        }`
       );
     } else {
       comunicacion = await ejecutarComunicacion(
         traza.interpretacion,
         propuestaAplicar,
-        estadoAntes
+        estadoAntes,
+        { modo }
       );
     }
 
@@ -162,7 +230,7 @@ export async function procesarTurnoPipeline(
     aplicarEstadoPatch(propuestaAplicar.estadoPatch);
     const accionesEjecutadas = await ejecutarAcciones(propuestaAplicar.acciones);
 
-    const razonamientoInterno = armarRazonamientoInterno(traza);
+    const razonamientoInterno = armarRazonamientoInterno(traza, modo);
 
     registrarTurnoHistorial({
       respuestaPaciente:
@@ -177,7 +245,8 @@ export async function procesarTurnoPipeline(
       comunicacion: traza.comunicacion,
       acciones: propuestaAplicar.acciones,
       estadoPatch: propuestaAplicar.estadoPatch,
-      pipeline: true
+      pipeline: true,
+      modoTurno: modo
     });
 
     return {
@@ -185,13 +254,19 @@ export async function procesarTurnoPipeline(
       pasos: aPasosHablar(comunicacion.mensajesPaciente),
       contextoVoz: comunicacion.contextoVoz,
       accionesEjecutadas,
+      modoTurno: modo,
       pipeline: traza
     };
   } catch (err) {
-    console.error('❌ Pipeline turno:', err.message);
+    console.error(`❌ Pipeline turno (${modo}):`, err.message);
+    const mensajeError =
+      modo === 'bootstrap'
+        ? 'No se pudo iniciar el examen en este momento. Por favor, intentá de nuevo en unos segundos.'
+        : `Error del pipeline: ${err.message}`;
     return {
       ok: false,
-      error: `Error del pipeline: ${err.message}`
+      error: mensajeError,
+      modoTurno: modo
     };
   }
 }

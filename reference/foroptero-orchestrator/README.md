@@ -10,9 +10,19 @@ Knowledge clínico (5 archivos por agente): [knowledge/README.md](./knowledge/RE
 
 Por turno: **intérprete** → **protocolo** → **auditor** (hasta 1 reintento) → patch + MQTT → **comunicación**.
 
+### Turno bootstrap
+
+Cuando el ojo activo aún no tiene `letraActual` ni `logmarActual` (estado vacío tras `POST /api/examen/nuevo`), el pipeline entra en **`modo: bootstrap`**:
+
+- Detectado en `detectarModoTurno()` (`pipelineTurno.js`).
+- El intérprete se omite (clasificación fija `continuacion`).
+- Protocolo y auditor reciben `modo: bootstrap` en el user prompt y aplican *Inicio del test por ojo* (H@0.3, foróptero + TV).
+- Si el paciente envía una frase social ("iniciar") en el primer turno, se loguea en historial pero no se interpreta clínicamente.
+- Fallback diferenciado si falla el auditor o OpenAI (mensaje neutro, sin repregunta por letra).
+
 ```
 agents/          # llamadas OpenAI por rol
-pipelineTurno.js # orquestación
+pipelineTurno.js # orquestación + detectarModoTurno
 prompts/         # interprete.md, protocolo.md, comunicacion.md, auditor.md
 ```
 
@@ -51,6 +61,9 @@ Puerto por defecto: **3001**
 OPENAI_API_KEY=sk-... npm start
 # otra terminal:
 BACKEND_URL=http://localhost:3001 npm run test:agent
+
+# Solo escenarios bootstrap (requiere servidor + OPENAI_API_KEY):
+BACKEND_URL=http://localhost:3001 node testAgent.js bootstrap
 ```
 
 ## Frontend

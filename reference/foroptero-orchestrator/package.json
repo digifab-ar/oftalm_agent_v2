@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test:agent": "node testAgent.js"
+    "test:agent": "node testAgent.js",
+    "test:bootstrap": "node testAgent.js bootstrap"
   },
   "dependencies": {
     "cors": "^2.8.5",
