@@ -65,16 +65,18 @@ Globales: `fase`, `ojoActual`, `finalizado`.
 
 ---
 
-## Regla de contadores (`aciertosPorLogmar`)
+## Regla de contadores (`resultadosPorLogmar`)
 
-**Fuente de verdad:** `agudeza.{ojo}.aciertosPorLogmar` del JSON `estadoActual` recibido en el user.
+**Fuente de verdad:** `agudeza.{ojo}.resultadosPorLogmar` del JSON recibido en el user (**tras registro del intento** en el orquestador).
 
-| Clasificación | Cómo tratar `aciertosPorLogmar` en el patch |
-|---------------|--------------------------------------------|
-| **correcta** | Incrementar **solo** el contador del `logmarActual` simulado (`aciertosPorLogmar[logmarActual] += 1`). El resto de las claves se mantiene exactamente como en `estadoAntes`. |
-| **incorrecta** / **no_ve** | **Omitir** la clave `aciertosPorLogmar` del patch. Si por estructura del schema debés incluirla, copiala **idéntica** a `estadoAntes`. |
-| **ambigua** / **confianza_baja** | `estadoPatch: {}`. No tocar contadores. |
-| **continuacion** (bootstrap) | Inicializar todos los contadores del ojo activo en `0` (caso de Inicio del test). |
+Por nivel logMAR: `{ "correcto": n, "incorrecto": m }`. Legacy: `aciertosPorLogmar[k]` = `resultadosPorLogmar[k].correcto` (sincronizado en código).
+
+| Clasificación | Registro (servidor, antes del protocolo) | Patch del protocolo |
+|---------------|----------------------------------------|---------------------|
+| **correcta** | `correcto += 1` en logMAR del estímulo | **Prohibido** incluir `resultadosPorLogmar` / `aciertosPorLogmar` |
+| **incorrecta** / **no_ve** | `incorrecto += 1` en logMAR del estímulo | **Prohibido** incluir contadores |
+| **ambigua** / **confianza_baja** | Sin cambio | `estadoPatch: {}` |
+| **continuacion** (bootstrap) | Sin registro | Inicializar estímulo; contadores ya en 0 en memoria |
 
 **Acumulación a lo largo del examen.** Los contadores `aciertosPorLogmar[k]` son **acumulativos** durante toda la corrida del ojo activo. Un `no_ve` o `incorrecta` que sube a un logMAR distinto **no** descuenta ni resetea aciertos previos. Por ejemplo, si la trayectoria es `0.2 correcta → 0.1 no_ve → vuelta a 0.2 correcta`, el contador `aciertosPorLogmar[0.2]` pasa de `1` a `2` y dispara el cierre por la regla "≥ 2" (ver Árbol tras correcta, paso 2), aunque las dos correctas no hayan sido consecutivas.
 
@@ -116,7 +118,7 @@ patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0}
 
 ## Árbol tras **correcta** (orden estricto)
 
-1. `aciertosPorLogmar[logmarActual] += 1` (simular primero, sobre el valor literal de `estadoAntes`).
+1. Leé `c = resultadosPorLogmar[logmarActual].correcto` (ya incluye este turno; **no** simules +1).
 2. Si **≥ 2**: `logmarFinal`, `letraFinal`; si **R** → transición R→L (mismo turno); si **L** → `fase: finalizado`; **sin** bajar ni `tv` en ese ojo.
 3. Si **= 1** y `logmarActual > 0.0`: **bajar** logMAR, rotar letra Sloan, **`tv` obligatoria**, `evento: siguiente_optotipo`.
 4. Si **= 1** y `logmarActual == 0.0`: rotar letra, `tv`, `siguiente_optotipo`.

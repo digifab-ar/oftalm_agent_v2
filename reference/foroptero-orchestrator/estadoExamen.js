@@ -2,17 +2,28 @@
  * Estado global del examen (memoria, una sesión por instancia).
  */
 
+import {
+  aplicarRegistroIntento,
+  asegurarResultadosPorLogmarEnOjo,
+  buildIntentId,
+  crearResultadosPorLogmarVacio,
+  debeRegistrarIntento,
+  sincronizarAciertosLegacy
+} from './lib/registroAgudeza.js';
+
 const RX_DEMO = {
   R: { esfera: 0.75, cilindro: -1.75, angulo: 60 },
   L: { esfera: 2.75, cilindro: 0, angulo: 0 }
 };
 
 function ojoAgudezaVacio() {
+  const resultadosPorLogmar = crearResultadosPorLogmarVacio();
   return {
     logmarActual: null,
     letraActual: null,
     ultimoLogmarCorrecto: null,
     confirmaciones: 0,
+    resultadosPorLogmar,
     aciertosPorLogmar: { '0.3': 0, '0.2': 0, '0.1': 0, '0.0': 0 },
     logmarFinal: null,
     letraFinal: null,
@@ -36,6 +47,7 @@ export function inicializarExamen(rxOverride = null) {
       L: ojoAgudezaVacio()
     },
     historial: [],
+    intentosRegistrados: [],
     iniciado: Date.now(),
     finalizado: null
   };
@@ -85,7 +97,86 @@ export function obtenerDetalleExamen() {
 
 export function obtenerEstadoParaOrquestador() {
   if (!estadoExamen) return null;
+  for (const ojo of ['R', 'L']) {
+    asegurarResultadosPorLogmarEnOjo(estadoExamen.agudeza[ojo]);
+  }
   return JSON.parse(JSON.stringify(estadoExamen));
+}
+
+/**
+ * Registra el intento del turno en `resultadosPorLogmar` (determinista, idempotente).
+ * Usa logmar/letra de `estadoExamen` en el momento de la llamada (estímulo en pantalla).
+ *
+ * @param {object} params
+ * @param {object} params.interpretacion
+ * @param {string | null} params.respuestaPaciente
+ * @param {string} params.timestamp
+ * @param {'bootstrap' | 'respuesta'} params.modo
+ */
+export function registrarIntentoAgudeza({
+  interpretacion,
+  respuestaPaciente,
+  timestamp,
+  modo
+}) {
+  if (!estadoExamen) {
+    return { registrado: false, motivo: 'sin_examen', duplicado: false };
+  }
+
+  const clasificacion = interpretacion?.clasificacion;
+  if (!debeRegistrarIntento(clasificacion, modo)) {
+    return {
+      registrado: false,
+      motivo: 'no_aplica',
+      duplicado: false,
+      clasificacion
+    };
+  }
+
+  const intentId = buildIntentId(respuestaPaciente, timestamp);
+  if (!Array.isArray(estadoExamen.intentosRegistrados)) {
+    estadoExamen.intentosRegistrados = [];
+  }
+
+  if (estadoExamen.intentosRegistrados.includes(intentId)) {
+    const ojo = estadoExamen.ojoActual;
+    const ag = estadoExamen.agudeza[ojo];
+    asegurarResultadosPorLogmarEnOjo(ag);
+    return {
+      registrado: true,
+      duplicado: true,
+      intentId,
+      ojo,
+      logmarEstimulo: ag.logmarActual,
+      letraEstimulo: ag.letraActual,
+      resultadosPorLogmar: JSON.parse(JSON.stringify(ag.resultadosPorLogmar))
+    };
+  }
+
+  const ojo = estadoExamen.ojoActual;
+  const ag = estadoExamen.agudeza[ojo];
+  asegurarResultadosPorLogmarEnOjo(ag);
+
+  const logmarEstimulo = ag.logmarActual;
+  const letraEstimulo = ag.letraActual;
+  const resultado = aplicarRegistroIntento(ag, logmarEstimulo, clasificacion);
+
+  if (resultado.aplicado) {
+    estadoExamen.intentosRegistrados.push(intentId);
+  }
+
+  return {
+    registrado: resultado.aplicado,
+    duplicado: false,
+    intentId,
+    ojo,
+    logmarEstimulo,
+    letraEstimulo,
+    clasificacion,
+    logmarClave: resultado.logmarClave,
+    motivo: resultado.motivo,
+    resultadosPorLogmar: JSON.parse(JSON.stringify(ag.resultadosPorLogmar))
+  };
 }
 
 function deepMerge(target, source) {
@@ -109,9 +200,27 @@ function deepMerge(target, source) {
   return out;
 }
 
+/** El protocolo no debe escribir contadores; solo el registro de intento. */
+function sanitizarPatchProtocolo(patch) {
+  if (!patch?.agudeza) return patch;
+  const out = { ...patch, agudeza: { ...patch.agudeza } };
+  for (const ojo of ['R', 'L']) {
+    if (!out.agudeza[ojo]) continue;
+    const { resultadosPorLogmar, aciertosPorLogmar, ...resto } = out.agudeza[ojo];
+    out.agudeza[ojo] = resto;
+  }
+  return out;
+}
+
 export function aplicarEstadoPatch(patch) {
   if (!estadoExamen || !patch || typeof patch !== 'object') return;
-  estadoExamen = deepMerge(estadoExamen, patch);
+  const limpio = sanitizarPatchProtocolo(patch);
+  estadoExamen = deepMerge(estadoExamen, limpio);
+  for (const ojo of ['R', 'L']) {
+    if (estadoExamen.agudeza[ojo]) {
+      sincronizarAciertosLegacy(estadoExamen.agudeza[ojo]);
+    }
+  }
 }
 
 export function registrarTurnoHistorial(entrada) {

@@ -8,7 +8,9 @@ Knowledge **core + fases** (multi-fase): [knowledge/README.md](./knowledge/READM
 
 ## Pipeline multi-agente
 
-Por turno: **intérprete** → **protocolo** → **auditor** (hasta 1 reintento) → patch + MQTT → **comunicación**.
+Por turno (`modo: respuesta`): **intérprete** → **registro de intento** (servidor, `resultadosPorLogmar`) → **protocolo** → **auditor** (hasta 1 reintento) → patch + MQTT → **comunicación**.
+
+El protocolo **no escribe contadores** en el patch; lee la tabla ya actualizada. Ver [../PLAN_TABLA_RESULTADOS_AGUDEZA.md](../PLAN_TABLA_RESULTADOS_AGUDEZA.md).
 
 ### Turno bootstrap
 
@@ -54,7 +56,7 @@ Puerto por defecto: **3001**
 |--------|------|-------------|
 | GET | `/api/health` | Estado del servicio |
 | POST | `/api/examen/nuevo` | Inicializa examen |
-| POST | `/api/examen/turno` | Turno (`respuestaPaciente`, `confianza`) |
+| POST | `/api/examen/turno` | Turno (`respuestaPaciente`, `confianza`, `timestamp` opcional) |
 | GET | `/api/examen/estado` | Resumen |
 | GET | `/api/examen/detalle` | Estado + historial |
 | GET | `/api/examen/registro.csv` | Export QA |
@@ -65,6 +67,7 @@ Puerto por defecto: **3001**
 OPENAI_API_KEY=sk-... npm start
 # otra terminal:
 BACKEND_URL=http://localhost:3001 npm run test:agent
+npm run test:registro
 
 # Solo escenarios bootstrap (requiere servidor + OPENAI_API_KEY):
 BACKEND_URL=http://localhost:3001 node testAgent.js bootstrap

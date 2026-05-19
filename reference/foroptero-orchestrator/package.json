@@ -8,7 +8,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test:agent": "node testAgent.js",
-    "test:bootstrap": "node testAgent.js bootstrap"
+    "test:bootstrap": "node testAgent.js bootstrap",
+    "test:registro": "node --test lib/registroAgudeza.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

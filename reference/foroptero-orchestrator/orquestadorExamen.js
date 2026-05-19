@@ -6,6 +6,11 @@ export { cargarKnowledgeAgente } from './lib/knowledge.js';
  * Procesa un turno: pipeline multi-agente
  * (intérprete → protocolo → auditor → comunicación).
  */
-export async function procesarTurno(respuestaPaciente = null, confianza = 1) {
-  return procesarTurnoPipeline(respuestaPaciente, confianza);
+/**
+ * @param {string | null} respuestaPaciente
+ * @param {number} confianza
+ * @param {{ timestamp?: string }} [options]
+ */
+export async function procesarTurno(respuestaPaciente = null, confianza = 1, options = {}) {
+  return procesarTurnoPipeline(respuestaPaciente, confianza, options);
 }

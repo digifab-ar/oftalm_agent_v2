@@ -12,7 +12,8 @@ function construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo) {
   }
 
   partes.push(
-    '## Estado antes del patch',
+    '## Estado tras registro del intento (antes de aplicar patch del protocolo)',
+    'Los contadores en `resultadosPorLogmar` ya reflejan este turno. El protocolo **no debe** modificarlos en el patch.',
     '```json',
     JSON.stringify(estadoAntes, null, 2),
     '```',

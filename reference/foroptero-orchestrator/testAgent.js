@@ -31,11 +31,12 @@ export async function nuevo() {
   return request('/api/examen/nuevo', 'POST', {});
 }
 
-export async function turno(respuestaPaciente = null, confianza = 1) {
+export async function turno(respuestaPaciente = null, confianza = 1, timestamp = null) {
   const body = {};
   if (respuestaPaciente != null) {
     body.respuestaPaciente = respuestaPaciente;
     body.confianza = confianza;
+    body.timestamp = timestamp ?? new Date().toISOString();
   }
   return request('/api/examen/turno', 'POST', body);
 }

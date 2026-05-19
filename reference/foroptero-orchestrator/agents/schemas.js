@@ -46,6 +46,44 @@ const OJO_AGUDEZA = {
     letraActual: { type: 'string' },
     ultimoLogmarCorrecto: { type: ['number', 'null'] },
     confirmaciones: { type: 'number' },
+    resultadosPorLogmar: {
+      type: 'object',
+      properties: {
+        '0.3': {
+          type: 'object',
+          properties: {
+            correcto: { type: 'number' },
+            incorrecto: { type: 'number' }
+          },
+          additionalProperties: false
+        },
+        '0.2': {
+          type: 'object',
+          properties: {
+            correcto: { type: 'number' },
+            incorrecto: { type: 'number' }
+          },
+          additionalProperties: false
+        },
+        '0.1': {
+          type: 'object',
+          properties: {
+            correcto: { type: 'number' },
+            incorrecto: { type: 'number' }
+          },
+          additionalProperties: false
+        },
+        '0.0': {
+          type: 'object',
+          properties: {
+            correcto: { type: 'number' },
+            incorrecto: { type: 'number' }
+          },
+          additionalProperties: false
+        }
+      },
+      additionalProperties: false
+    },
     aciertosPorLogmar: {
       type: 'object',
       properties: {

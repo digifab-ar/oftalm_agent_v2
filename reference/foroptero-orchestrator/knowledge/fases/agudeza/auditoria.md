@@ -7,14 +7,22 @@
 
 ## Fuente de verdad
 
-- Auditá comparando contra el JSON `estadoAntes` literal del user. No infieras `logmarActual` ni `aciertosPorLogmar` desde el historial conversacional ni desde el razonamiento del protocolo.
-- Si en tu `violaciones` o `correccionSugerida` citás un valor, debe coincidir **literalmente** con `estadoAntes` (p. ej. si `estadoAntes.agudeza.R.logmarActual === 0.2`, no escribas “bajada desde 0.1”).
+- Auditá contra el JSON del user (**estado tras registro del intento** en servidor). Los contadores ya incluyen este turno.
+- Leé `resultadosPorLogmar[logmar].correcto` / `.incorrecto` — **no** simules +1.
+- Si citás valores en `violaciones`, deben coincidir **literalmente** con el JSON.
+
+---
+
+## Registro en servidor (pipeline)
+
+- Tras el intérprete, el orquestador incrementa `resultadosPorLogmar` antes de invocar al protocolo.
+- **Rechazar** si el patch del protocolo incluye o altera `resultadosPorLogmar` o `aciertosPorLogmar`.
 
 ---
 
 ## Campos de estado (agudeza)
 
-- **Cierre por ojo:** `aciertosPorLogmar` del ojo activo (≥ 2 en el **mismo** logMAR tras clasificación **correcta**).
+- **Cierre por ojo:** `resultadosPorLogmar[logmarActual].correcto >= 2` en el estado **tras registro** (clasificación **correcta** en ese turno).
 - **`confirmaciones`:** puede aparecer en JSON legacy; **no** es criterio de auditoría en agudeza. No generes violaciones ni exijas cambios en ese campo.
 
 ---
@@ -46,15 +54,15 @@ Validar patch + acciones según *Inicio del test por ojo* en **protocolo-estado.
 
 **Solo** si `interpretacion.clasificacion === "correcta"`.
 
-Simulá `aciertosPorLogmar` **después** del patch.
+Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementado por el servidor).
 
-**Selección de fila (obligatoria).** Después de simular `aciertosPorLogmar[logmarActual] + 1`, aplicá **una sola** fila del cuadro siguiente: la que coincida con el contador simulado. Las otras filas **no son violaciones hipotéticas** y deben quedar **fuera** del listado `violaciones`. Si la simulación da `≥ 2`, **prohibido** citar como violación las reglas de las ramas `= 1` (p. ej. "debe incluir `tv` para `siguiente_optotipo`"); y viceversa. Mezclar reglas de ramas distintas en `violaciones` produce feedback contradictorio para el protocolo en el reintento (regresión log 2026-05-19 turno 5, segunda corrida).
+**Selección de fila (obligatoria).** Una sola fila según `c`. No mezclar violaciones de ramas distintas.
 
-| Condición post-simulación | Debe cumplirse |
-|---------------------------|----------------|
-| Contador del `logmarActual` **≥ 2** | `logmarFinal` + `letraFinal` en ese ojo; **sin** `tv` para seguir en ese ojo. Ojo **R** → `evento: cierre_ojo_R_e_inicio_L` + foróptero + TV H@0.3 para L en el **mismo** turno. |
-| Contador **= 1** y `logmarActual > 0.0` | **Bajar** un paso logMAR, nueva letra, acción `tv`; `evento: siguiente_optotipo`. |
-| Contador **= 1** y `logmarActual == 0.0` | Permanecer en 0.0, rotar letra, `tv`. |
+| Condición (`c` = correctos en logMAR del estímulo) | Debe cumplirse |
+|------------------------------------------------------|----------------|
+| **c ≥ 2** | `logmarFinal` en ese ojo (**sin** exigir `letraFinal`); **sin** `tv` para seguir en ese ojo. Ojo **R** → `cierre_ojo_R_e_inicio_L` + foróptero + TV H@0.3 L en el **mismo** turno. |
+| **c = 1** y `logmarActual > 0.0` | **Bajar** un paso logMAR, nueva letra, `tv`; `siguiente_optotipo`. |
+| **c = 1** y `logmarActual == 0.0` | Permanecer en 0.0, rotar letra, `tv`. |
 
 ### Anti-patrón: solo contador (regresión log T3)
 

@@ -178,13 +178,19 @@ app.post('/api/examen/turno', async (req, res) => {
       inicializarExamen(req.body?.rx);
     }
 
-    const { respuestaPaciente, confianza } = req.body ?? {};
+    const { respuestaPaciente, confianza, timestamp } = req.body ?? {};
     const tieneRespuesta =
       respuestaPaciente != null && String(respuestaPaciente).trim() !== '';
 
     const resultado = await procesarTurno(
       tieneRespuesta ? String(respuestaPaciente).trim() : null,
-      confianza
+      confianza,
+      {
+        timestamp:
+          timestamp != null && String(timestamp).trim() !== ''
+            ? String(timestamp).trim()
+            : new Date().toISOString()
+      }
     );
 
     if (!resultado.ok) {

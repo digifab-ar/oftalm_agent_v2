@@ -12,7 +12,9 @@ function construirUser(estado, interpretacion, feedbackAuditor = null, modo) {
   }
 
   partes.push(
-    '## Estado actual del examen',
+    '## Estado actual del examen (tras registro del intento en servidor)',
+    'Los contadores en `resultadosPorLogmar` **ya incluyen** este turno si la clasificación fue correcta/incorrecta/no_ve.',
+    '**Prohibido** incluir `resultadosPorLogmar` ni `aciertosPorLogmar` en `estadoPatch`.',
     '```json',
     JSON.stringify(estado, null, 2),
     '```',

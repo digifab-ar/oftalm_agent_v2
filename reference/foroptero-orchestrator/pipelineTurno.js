@@ -1,6 +1,7 @@
 import {
   aplicarEstadoPatch,
   obtenerEstadoParaOrquestador,
+  registrarIntentoAgudeza,
   registrarTurnoHistorial
 } from './estadoExamen.js';
 import { ejecutarAcciones } from './ejecutarAcciones.js';
@@ -189,7 +190,8 @@ async function protocoloConAuditoria(estadoAntes, interpretacion, modo) {
  */
 export async function procesarTurnoPipeline(
   respuestaPaciente = null,
-  confianza = 1
+  confianza = 1,
+  options = {}
 ) {
   const estadoAntes = obtenerEstadoParaOrquestador();
   if (!estadoAntes) {
@@ -204,9 +206,15 @@ export async function procesarTurnoPipeline(
       ? Math.min(1, Math.max(0, confianza))
       : 1;
 
+  const turnoTimestamp =
+    options.timestamp != null && String(options.timestamp).trim() !== ''
+      ? String(options.timestamp).trim()
+      : new Date().toISOString();
+
   const traza = {
     modo,
     interpretacion: null,
+    registroIntento: null,
     propuestaProtocolo: null,
     auditoria: null,
     comunicacion: null,
@@ -225,8 +233,26 @@ export async function procesarTurnoPipeline(
       );
     }
 
+    if (modo === 'respuesta') {
+      traza.registroIntento = registrarIntentoAgudeza({
+        interpretacion: traza.interpretacion,
+        respuestaPaciente:
+          respuestaPaciente != null ? String(respuestaPaciente).trim() : null,
+        timestamp: turnoTimestamp,
+        modo
+      });
+      if (traza.registroIntento.registrado) {
+        console.log(
+          `📊 Registro intento: ojo ${traza.registroIntento.ojo} @ logmar ${traza.registroIntento.logmarEstimulo} (${traza.registroIntento.clasificacion})` +
+            (traza.registroIntento.duplicado ? ' [duplicado]' : '')
+        );
+      }
+    }
+
+    const estadoTrasRegistro = obtenerEstadoParaOrquestador();
+
     const resultadoProtocolo = await protocoloConAuditoria(
-      estadoAntes,
+      estadoTrasRegistro,
       traza.interpretacion,
       modo
     );
@@ -264,7 +290,7 @@ export async function procesarTurnoPipeline(
       comunicacion = await ejecutarComunicacion(
         traza.interpretacion,
         propuestaAplicar,
-        estadoAntes,
+        estadoTrasRegistro,
         { modo, huboCambioDispositivo }
       );
     }
@@ -280,10 +306,12 @@ export async function procesarTurnoPipeline(
       respuestaPaciente:
         respuestaPaciente != null ? String(respuestaPaciente).trim() : null,
       confianza: conf,
+      timestampTurno: turnoTimestamp,
       contextoVozEmitido: comunicacion.contextoVoz,
       mensajesEmitidos: comunicacion.mensajesPaciente,
       razonamientoInterno,
       interpretacion: traza.interpretacion,
+      registroIntento: traza.registroIntento,
       propuestaProtocolo: propuestaAplicar,
       auditoria: traza.auditoria,
       comunicacion: traza.comunicacion,
