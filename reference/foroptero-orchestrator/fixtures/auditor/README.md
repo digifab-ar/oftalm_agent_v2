@@ -6,11 +6,12 @@ Cada fixture incluye `esperado.aprobado` y notas. No hay runner automatizado en 
 
 | ID | Archivo | Clasificación | Resultado esperado |
 |----|---------|---------------|-------------------|
-| AUD-01 | `AUD-01-no_ve-sin-incrementar-contador.json` | `no_ve` @0.1, `0.2:1` previo | `aprobado: true` |
+| AUD-01 | `AUD-01-no_ve-sin-incrementar-contador.json` | `no_ve` @0.1, `0.2:1` previo, patch mantiene contadores | `aprobado: true` |
 | AUD-02 | `AUD-02-no_ve-incrementa-contador.json` | `no_ve` incrementa contador | `aprobado: false` |
 | AUD-03 | `AUD-03-correcta-solo-contador.json` | `correcta` sin `tv` | `aprobado: false` |
 | AUD-04 | `AUD-04-correcta-cierre-R.json` | `correcta` 2.º en 0.2 | `aprobado: true` |
 | AUD-05 | `AUD-05-no_ve-sube-dos-pasos.json` | `no_ve` 0.1→0.3 | `aprobado: false` |
 | AUD-06 | `AUD-06-ambigua-sin-acciones.json` | `ambigua` | `aprobado: true` |
+| AUD-07 | `AUD-07-no_ve-resetea-contador.json` | `no_ve` @0.1, `0.2:1` previo, patch resetea `0.2` a 0 | `aprobado: false` |
 
-Regresión log 2026-05-19: **AUD-01** reproduce turno 4 (“veo borroso”).
+Regresión log 2026-05-19: **AUD-01** reproduce el caso correcto del turno 4 (“veo borroso”); **AUD-07** reproduce el bug real del turno 4 (reset de contadores ganados que el auditor aprobó por error).

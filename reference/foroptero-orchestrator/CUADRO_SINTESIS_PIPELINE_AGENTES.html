@@ -283,6 +283,7 @@
       <a href="#sintesis">4. Cuadro por agente</a>
       <a href="#actividades">5. Actividades detalladas</a>
       <a href="#knowledge">6. Knowledge core + fases</a>
+      <a href="#auditor-qa">6.1 Fixtures auditor</a>
       <a href="#flujo">7. Flujos de datos</a>
       <a href="#responsabilidades">8. Responsabilidades</a>
       <a href="#archivos">9. Archivos y docs</a>
@@ -296,16 +297,19 @@
         <span class="badge badge-ok">Bootstrap implementado</span>
         <span class="badge badge-ok">Knowledge core + fases/agudeza</span>
         <span class="badge badge-ok">Fallbacks diferenciados</span>
-        <span class="badge badge-warn">E2E AC1–AC7 pendiente (Fase F)</span>
+        <span class="badge badge-ok">Auditor: checklist bifurcado + fixtures AUD-01…07</span>
+        <span class="badge badge-warn">E2E pipeline (Fase F) y validación manual fixtures pendiente</span>
       </div>
 
       <p>Fuentes principales:</p>
       <ul class="doc-links">
         <li><code>pipelineTurno.js</code> — orquestación, <code>detectarModoTurno</code>, fallbacks</li>
-        <li><code>lib/knowledge.js</code>, <code>lib/estimulo.js</code> — carga por fase y estímulo en user</li>
+        <li><code>lib/knowledge.js</code>, <code>lib/estimulo.js</code>, <code>lib/llmClient.js</code></li>
         <li><a href="../DISENO_AGENTE_INTERMEDIO.md">DISENO_AGENTE_INTERMEDIO.md</a> — arquitectura y contrato API</li>
         <li><a href="../PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md">PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md</a> — mitigación log + escala multi-fase</li>
-        <li><a href="README.md">foroptero-orchestrator/README.md</a>, <a href="knowledge/README.md">knowledge/README.md</a></li>
+        <li><a href="../PLAN_AUDITOR_NO_VE.md">PLAN_AUDITOR_NO_VE.md</a> — corrección auditor <code>no_ve</code> / contadores</li>
+        <li><a href="fixtures/auditor/README.md">fixtures/auditor/</a> — JSON QA manual (AUD-01…07)</li>
+        <li><a href="README.md">README.md</a>, <a href="knowledge/README.md">knowledge/README.md</a></li>
         <li><code>src/app/agentConfigs/chatSupervisor/index.ts</code> — agente de voz</li>
       </ul>
 
@@ -561,12 +565,14 @@ flowchart TB
         <article>
           <h4>3 — Auditor <span class="badge badge-respuesta">genérico</span></h4>
           <dl class="meta">
-            <dt>Rol</dt><dd>QA de propuesta de protocolo antes de aplicar.</dd>
-            <dt>Prompt</dt><dd><code>prompts/auditor.md</code></dd>
-            <dt>Knowledge</dt><dd><code>core/auditoria-estructural.md</code> + <code>fases/agudeza/auditoria.md</code></dd>
-            <dt>Regla clave</dt><dd>Checklist <strong>bifurcado</strong> por <code>clasificacion</code>; no aplicar post-correcta en <code>no_ve</code>/<code>incorrecta</code></dd>
-            <dt>Anti-patrón</dt><dd>“Solo contador” (solo si <code>correcta</code>) + <code>siguiente_optotipo</code> sin <code>tv</code></dd>
-            <dt>Fixtures</dt><dd><code>fixtures/auditor/AUD-01…06</code> — regresión log T4 en AUD-01</dd>
+            <dt>Rol</dt><dd>QA de propuesta de protocolo antes de aplicar patch/MQTT.</dd>
+            <dt>Prompt</dt><dd><code>prompts/auditor.md</code> — fuente de verdad: JSON <code>estadoAntes</code> literal</dd>
+            <dt>Knowledge</dt><dd><code>core/auditoria-estructural.md</code> + <code>fases/agudeza/auditoria.md</code> (tabla decisión por clasificación)</dd>
+            <dt>Orden</dt><dd>1) elegir checklist de fase según <code>clasificacion</code> → 2) capa estructural → 3) JSON salida</dd>
+            <dt><code>correcta</code></dt><dd>Simular <code>aciertosPorLogmar</code>; anti-patrón “solo contador”; cierre R→L</dd>
+            <dt><code>no_ve</code> / <code>incorrecta</code></dt><dd>Subida ≤1 paso + <code>tv</code>; contadores <strong>idénticos</strong> a <code>estadoAntes</code> (omitir clave o copiar); no incrementar ni <strong>resetear</strong></dd>
+            <dt>No audita</dt><dd><code>confirmaciones</code> en agudeza (campo legacy)</dd>
+            <dt>Fixtures</dt><dd><a href="fixtures/auditor/README.md">AUD-01…07</a> — T4 “veo borroso”: AUD-01 aprueba, AUD-07 rechaza reset</dd>
           </dl>
         </article>
 
@@ -616,13 +622,30 @@ flowchart TB
       </table></div>
 
       <h3>5.3 Auditor</h3>
+
+      <div class="table-wrap">
+        <table class="compact">
+          <thead>
+            <tr><th><code>clasificacion</code></th><th>Checklist (fase agudeza)</th><th>Ignorar</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>correcta</code></td><td>Post-correcta: simular contadores, cierre ≥2, bajar + <code>tv</code> si =1</td><td>Reglas de subida <code>no_ve</code></td></tr>
+            <tr><td><code>incorrecta</code>, <code>no_ve</code></td><td>Subida logMAR + <code>tv</code>; contadores sin cambio</td><td>Post-correcta, “solo contador”</td></tr>
+            <tr><td><code>ambigua</code>, <code>confianza_baja</code></td><td><code>acciones: []</code></td><td>Contadores, logMAR</td></tr>
+            <tr><td><code>continuacion</code> (bootstrap)</td><td>Inicio test por ojo</td><td>Null en arranque</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="table-wrap"><table>
         <thead><tr><th>Actividad</th><th>Detalle</th></tr></thead>
         <tbody>
-          <tr><td>Estructural (core)</td><td>Separar rol intérprete vs protocolo; orden acciones; ambigua sin MQTT</td></tr>
-          <tr><td>Agudeza (fase)</td><td>Simular contadores solo si <code>correcta</code>; R→L; rechazar “solo contador”</td></tr>
-          <tr><td><code>no_ve</code> / <code>incorrecta</code></td><td>Subida ≤1 paso + <code>tv</code>; <strong>no</strong> incrementar <code>aciertosPorLogmar</code>; ignorar <code>confirmaciones</code></td></tr>
-          <tr><td>Bootstrap</td><td>Validar inicio H@0.3 + acciones esperadas</td></tr>
+          <tr><td>Fuente de verdad</td><td>Valores en violaciones = <code>estadoAntes</code> literal (no inferir del protocolo)</td></tr>
+          <tr><td>Estructural (core)</td><td>No rechazar <code>no_ve</code> porque contador destino ya era ≥1; <strong>sí</strong> rechazar si patch altera <code>aciertosPorLogmar</code></td></tr>
+          <tr><td>Anti-patrón reset</td><td><code>no_ve</code> que degrada contador ganado (ej. <code>0.2:1</code>→<code>0.2:0</code>) → AUD-07</td></tr>
+          <tr><td>Anti-patrón incremento</td><td><code>no_ve</code> que incrementa contador → AUD-02</td></tr>
+          <tr><td>Caso T4 válido</td><td>“veo borroso”, sube E@0.2, contadores idénticos → AUD-01</td></tr>
+          <tr><td>Bootstrap</td><td>Validar inicio H@0.3 + foróptero + TV</td></tr>
         </tbody>
       </table></div>
 
@@ -638,19 +661,16 @@ flowchart TB
 
       <h2 id="knowledge">6. Knowledge — estructura core + fases</h2>
 
-      <pre class="tree">knowledge/
-  core/
-    interpretacion-comun.md
-    auditoria-estructural.md
-    comunicacion-comun.md
-  dispositivos.md          # compartido (MQTT)
-  fases/
-    agudeza/
-      interpretacion.md
-      protocolo-estado.md
-      auditoria.md
-      comunicacion.md
-    lentes/                 # (futuro)</pre>
+      <pre class="tree">foroptero-orchestrator/
+  pipelineTurno.js
+  agents/                  # interprete, protocolo, auditor, comunicacion, schemas
+  prompts/                 # genéricos + protocolo-agudeza.md
+  knowledge/
+    core/                  # transversal
+    dispositivos.md
+    fases/agudeza/         # interpretacion, protocolo-estado, auditoria, comunicacion
+  fixtures/auditor/        # AUD-01…07 (QA manual)
+  lib/                     # knowledge.js, estimulo.js, llmClient.js, agentModels.js</pre>
 
       <div class="table-wrap">
         <table>
@@ -666,7 +686,7 @@ flowchart TB
             <tr>
               <td>Auditor</td>
               <td><code>prompts/auditor.md</code></td>
-              <td>core/auditoria-estructural + fases/agudeza/auditoria</td>
+              <td>core/auditoria-estructural + fases/agudeza/auditoria — checklist <strong>bifurcado</strong> por <code>clasificacion</code></td>
             </tr>
             <tr>
               <td>Comunicación</td>
@@ -698,6 +718,31 @@ flowchart TB
 
       <p>Agregar fase <code>lentes</code>: carpeta <code>fases/lentes/*</code> + <code>protocolo-lentes.md</code> + registro en <code>FASE_KNOWLEDGE</code>; prompts genéricos sin cambiar.</p>
 
+      <h2 id="auditor-qa">6.1 Fixtures QA — agente auditor</h2>
+
+      <p>JSON en <code>fixtures/auditor/</code> para validación <strong>manual</strong> del auditor (armar user como <code>agents/auditor.js</code>). Sin runner automatizado aún. Ver <a href="../PLAN_AUDITOR_NO_VE.md">PLAN_AUDITOR_NO_VE.md</a>.</p>
+
+      <div class="table-wrap">
+        <table class="compact">
+          <thead>
+            <tr><th>ID</th><th>Archivo</th><th>Caso</th><th><code>aprobado</code> esperado</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>AUD-01</td><td><code>AUD-01-no_ve-sin-incrementar-contador.json</code></td><td><code>no_ve</code> @0.1, <code>0.2:1</code> previo, sube E@0.2 sin tocar contadores (T4 “veo borroso” correcto)</td><td><strong>true</strong></td></tr>
+            <tr><td>AUD-02</td><td><code>AUD-02-no_ve-incrementa-contador.json</code></td><td><code>no_ve</code> incrementa contador</td><td>false</td></tr>
+            <tr><td>AUD-03</td><td><code>AUD-03-correcta-solo-contador.json</code></td><td><code>correcta</code> sin <code>tv</code> (“solo contador”)</td><td>false</td></tr>
+            <tr><td>AUD-04</td><td><code>AUD-04-correcta-cierre-R.json</code></td><td>2.º acierto en 0.2 → cierre R + inicio L</td><td>true</td></tr>
+            <tr><td>AUD-05</td><td><code>AUD-05-no_ve-sube-dos-pasos.json</code></td><td><code>no_ve</code> sube 0.1→0.3 (más de un paso)</td><td>false</td></tr>
+            <tr><td>AUD-06</td><td><code>AUD-06-ambigua-sin-acciones.json</code></td><td><code>ambigua</code>, <code>acciones: []</code></td><td>true</td></tr>
+            <tr><td>AUD-07</td><td><code>AUD-07-no_ve-resetea-contador.json</code></td><td><code>no_ve</code> resetea <code>0.2:1</code>→<code>0.2:0</code> (bug real log T4)</td><td>false</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-ok">
+        <strong>Criterios manuales (plan auditor):</strong> AUD-01 ≥4/5 <code>true</code>; AUD-02 y AUD-07 ≥4/5 <code>false</code>; AUD-03 sin regresión; E2E hasta “veo borroso” sin <code>fallback_auditoria</code>.
+      </div>
+
       <h2 id="flujo">7. Flujos de datos</h2>
 
       <h3>7.1 Turno bootstrap (ej. T0 post-<code>/nuevo</code>)</h3>
@@ -728,6 +773,7 @@ flowchart TB
             <tr><td>T0</td><td>bootstrap</td><td><code>continuacion</code></td><td><code>inicio_ojo</code></td><td>H@0.3</td></tr>
             <tr><td>T1</td><td>"veo una X"</td><td><code>ambigua</code></td><td><code>repregunta_sin_cambio</code></td><td>Sin cambio</td></tr>
             <tr><td>T2</td><td>"veo una H"</td><td><code>correcta</code></td><td><code>siguiente_optotipo</code></td><td>Nueva letra @ <strong>0.2</strong></td></tr>
+            <tr><td>T4</td><td>"veo borroso" (<code>no_ve</code>)</td><td><code>no_ve</code></td><td>Sube E@0.2, contadores sin cambio</td><td>E@0.2 — auditor <strong>aprueba</strong> (AUD-01)</td></tr>
             <tr><td>…</td><td>2.º acierto mismo logMAR</td><td><code>correcta</code></td><td><code>cierre_ojo_R_e_inicio_L</code></td><td>L H@0.3</td></tr>
           </tbody>
         </table>
@@ -740,7 +786,7 @@ flowchart TB
           <tr><td>¿Modo bootstrap o respuesta?</td><td><code>detectarModoTurno</code> (código)</td></tr>
           <tr><td>¿Qué dijo el paciente?</td><td>Intérprete (solo modo respuesta)</td></tr>
           <tr><td>¿logMAR, ojos, MQTT?</td><td>Protocolo (fase agudeza)</td></tr>
-          <tr><td>¿Propuesta válida?</td><td>Auditor</td></tr>
+          <tr><td>¿Propuesta válida?</td><td>Auditor (checklist según <code>clasificacion</code>; <code>estadoAntes</code> literal)</td></tr>
           <tr><td>¿Texto y esperar respuesta?</td><td>Comunicación (o fallback)</td></tr>
           <tr><td>¿Transcripción al servidor?</td><td>Oftalmólogo Virtual</td></tr>
           <tr><td>¿Persistir y publicar?</td><td>Servidor</td></tr>
@@ -757,16 +803,19 @@ flowchart TB
           <tr><td>Knowledge loader</td><td><code>lib/knowledge.js</code>, <code>lib/estimulo.js</code>, <code>lib/agentModels.js</code></td></tr>
           <tr><td>MQTT</td><td><code>ejecutarAcciones.js</code></td></tr>
           <tr><td>Voz</td><td><code>src/app/agentConfigs/chatSupervisor/index.ts</code></td></tr>
-          <tr><td>Prueba HTTP</td><td><code>testAgent.js</code> (<code>npm run test:agent</code>, escenario <code>bootstrap</code>)</td></tr>
+          <tr><td>Prueba HTTP</td><td><code>testAgent.js</code> — <code>npm run test:agent</code>, <code>npm run test:bootstrap</code></td></tr>
+          <tr><td>Fixtures auditor</td><td><code>fixtures/auditor/AUD-01…07.json</code> + <code>fixtures/auditor/README.md</code></td></tr>
+          <tr><td>Schemas LLM</td><td><code>agents/schemas.js</code></td></tr>
           <tr><td>Diseño</td><td><code>reference/DISENO_AGENTE_INTERMEDIO.md</code></td></tr>
           <tr><td>Mitigación / escala</td><td><code>reference/PLAN_MITIGACION_PIPELINE_Y_ESCALA_FASES.md</code></td></tr>
+          <tr><td>Auditor <code>no_ve</code></td><td><code>reference/PLAN_AUDITOR_NO_VE.md</code></td></tr>
           <tr><td>Bootstrap</td><td><code>reference/PLAN_BOOTSTRAP_EXAMEN.md</code></td></tr>
         </tbody>
       </table></div>
 
       <footer>
         Documentación de referencia. No modifica runtime.
-        <br />Última revisión alineada a implementación 2026-05-19 (bootstrap, knowledge multi-fase, fallbacks).
+        <br />Última revisión: 2026-05-19 — bootstrap, knowledge multi-fase, fallbacks, auditor bifurcado (<code>no_ve</code>), fixtures AUD-01…07.
       </footer>
     </main>
   </div>

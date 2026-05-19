@@ -5,6 +5,13 @@
 
 ---
 
+## Fuente de verdad
+
+- Auditá comparando contra el JSON `estadoAntes` literal del user. No infieras `logmarActual` ni `aciertosPorLogmar` desde el historial conversacional ni desde el razonamiento del protocolo.
+- Si en tu `violaciones` o `correccionSugerida` citás un valor, debe coincidir **literalmente** con `estadoAntes` (p. ej. si `estadoAntes.agudeza.R.logmarActual === 0.2`, no escribas “bajada desde 0.1”).
+
+---
+
 ## Campos de estado (agudeza)
 
 - **Cierre por ojo:** `aciertosPorLogmar` del ojo activo (≥ 2 en el **mismo** logMAR tras clasificación **correcta**).
@@ -77,13 +84,14 @@ En el protocolo de agudeza, incorrecta y no_ve implican subida de logMAR (o rota
 - Subida de `logmarActual` como máximo **un paso** en la escala `0.0 → 0.1 → 0.2 → 0.3` (o en **0.3**: solo rotar letra, sin subir más).
 - `acciones` incluye `tv` con `letra` y `logmar` iguales al patch del ojo activo en `estadoPatch`.
 - `evento` coherente (p. ej. `siguiente_optotipo` si cambió estímulo).
-- Los contadores del patch coinciden con `estadoAntes` (sin incrementos).
+- Los contadores del patch coinciden **exactamente** con `estadoAntes` (sin incrementos **ni decrementos**), o bien la clave `aciertosPorLogmar` está **omitida** del patch.
 
 ### Rechazar si
 
 - Sube más de un paso logMAR en un solo turno.
 - `tv` con letra/logmar ≠ patch del ojo activo.
 - Clasificación `no_ve` o `incorrecta` pero el patch **incrementa** algún valor de `aciertosPorLogmar`.
+- Clasificación `no_ve` o `incorrecta` pero el patch **decrementa o resetea** algún `aciertosPorLogmar` que en `estadoAntes` era ≥ 1 (anti-patrón “reset de contadores ganados”; regresión log 2026-05-19 turno 4).
 - Clasificación **correcta** pero la propuesta solo sube logMAR sin lógica de contador (eso corresponde al otro checklist).
 
 ### Coherencia TV ↔ patch
@@ -122,16 +130,26 @@ estadoAntes: ojo R, logmarActual 0.1, letra T,
   aciertosPorLogmar { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 }
 interpretacion: no_ve (ej. "veo borroso")
 propuesta: logmarActual 0.2, letra E, tv E@0.2,
-  aciertosPorLogmar sin incrementar "0.2" (sigue en 1)
+  aciertosPorLogmar OMITIDO o idéntico a estadoAntes (sigue en {0.3:1, 0.2:1, 0.1:0, 0.0:0})
 ```
 
-**Rechazar** (`aprobado: false`):
+**Rechazar** (`aprobado: false`) — incremento espurio:
 
 ```text
 misma base, propuesta incrementa aciertosPorLogmar["0.2"] a 2 solo por no_ve
 ```
 
-Fixtures JSON: `fixtures/auditor/AUD-01.json`, `AUD-02.json`.
+**Rechazar** (`aprobado: false`) — **reset de contador ganado** (regresión log 2026-05-19 turno 4):
+
+```text
+estadoAntes.aciertosPorLogmar = { "0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0 }
+patch.aciertosPorLogmar       = { "0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0 }
+                                              ^^^^^^ degrada acierto previo
+violación: "patch decrementa aciertosPorLogmar[0.2] de 1 a 0 en clasificación no_ve"
+correccion: "omitir aciertosPorLogmar del patch o copiarlo idéntico a estadoAntes"
+```
+
+Fixtures JSON: `fixtures/auditor/AUD-01.json`, `AUD-02.json`, `AUD-07.json`.
 
 ---
 

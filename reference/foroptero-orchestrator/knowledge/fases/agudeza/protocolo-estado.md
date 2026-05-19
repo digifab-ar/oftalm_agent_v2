@@ -8,6 +8,14 @@ Referencias: **dispositivos.md**; auditoría en **auditoria.md**; interpretació
 
 ---
 
+## Fuente de verdad del estado
+
+- El **único** estado válido para decidir transiciones es el JSON `estadoActual` recibido en el user (campos: `ojoActual`, `agudeza.{ojo}.logmarActual`, `letraActual`, `aciertosPorLogmar`, `letrasUsadas`, `logmarFinal`).
+- **Prohibido inferir** `logmarActual` o contadores a partir del historial conversacional, del razonamiento previo, o del “avance esperado”. Si el JSON dice `logmarActual: 0.2`, el protocolo está en 0.2 aunque el último razonamiento hable de 0.1.
+- Si el JSON parece inconsistente (p. ej. contadores que no encajan con `logmarActual`), respetá el JSON tal cual; no lo “corrijas” silenciosamente.
+
+---
+
 ## Alcance
 
 - Test de **agudeza** monocular: **R** → **L**.
@@ -50,10 +58,48 @@ Globales: `fase`, `ojoActual`, `finalizado`.
 
 | Clasificación | Efecto |
 |---------------|--------|
-| **correcta** | Árbol post-correcta (abajo). |
-| **incorrecta** / **no_ve** | Subir un paso logMAR (o 0.3 + rotar letra); sin contadores; `tv`. |
+| **correcta** | Árbol post-correcta (abajo). Único caso donde el patch puede modificar `aciertosPorLogmar`. |
+| **incorrecta** / **no_ve** | Subir un paso logMAR (o 0.3 + rotar letra); **no incluir** `aciertosPorLogmar` en el patch (ver “Regla de contadores”); `tv`. |
 | **ambigua** / **confianza_baja** | `acciones: []`, `repregunta_sin_cambio`. |
 | **frase_paciente_no_clinica** | Sin `fase: finalizado` si L no cerró. |
+
+---
+
+## Regla de contadores (`aciertosPorLogmar`)
+
+**Fuente de verdad:** `agudeza.{ojo}.aciertosPorLogmar` del JSON `estadoActual` recibido en el user.
+
+| Clasificación | Cómo tratar `aciertosPorLogmar` en el patch |
+|---------------|--------------------------------------------|
+| **correcta** | Incrementar **solo** el contador del `logmarActual` simulado (`aciertosPorLogmar[logmarActual] += 1`). El resto de las claves se mantiene exactamente como en `estadoAntes`. |
+| **incorrecta** / **no_ve** | **Omitir** la clave `aciertosPorLogmar` del patch. Si por estructura del schema debés incluirla, copiala **idéntica** a `estadoAntes`. |
+| **ambigua** / **confianza_baja** | `estadoPatch: {}`. No tocar contadores. |
+| **continuacion** (bootstrap) | Inicializar todos los contadores del ojo activo en `0` (caso de Inicio del test). |
+
+**Prohibido (anti-patrón “reset de contadores ganados”):**
+
+- Emitir `aciertosPorLogmar` con valores **menores** a los de `estadoAntes` para ese ojo (ej. estado `0.2: 1` → patch `0.2: 0`).
+- Re-emitir el bloque completo con ceros “por seguridad” en `no_ve` / `incorrecta`. Eso degrada el avance clínico ganado y será rechazado por el auditor.
+
+### Ejemplo correcto (`no_ve` en 0.1 con 0.2:1 previo)
+
+```text
+estadoAntes.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0}
+patch.agudeza.R = {
+  logmarActual: 0.2,
+  letraActual: "E",
+  letrasUsadas: ["H","O","T","E"]
+  // aciertosPorLogmar OMITIDO (preferido) o idéntico a estadoAntes
+}
+```
+
+### Ejemplo incorrecto (regresión log 2026-05-19, turno 4)
+
+```text
+estadoAntes.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 1, "0.1": 0, "0.0": 0}
+patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, "0.1": 0, "0.0": 0}
+                                                   ^^^^^^ DEGRADA 0.2 de 1 a 0
+```
 
 ---
 
