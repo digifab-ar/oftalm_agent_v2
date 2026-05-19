@@ -1,9 +1,9 @@
 # Dispositivos — foróptero y TV (POC)
 
 **Agente:** protocolo (acciones MQTT).  
-**Alcance:** formato y reglas de emisión de `acciones`; no define cuándo sube/baja logMAR (ver **protocolo-agudeza-estado.md**).
+**Alcance:** formato y reglas de emisión de `acciones`; no define cuándo sube/baja logMAR (ver **fases/agudeza/protocolo-estado.md**).
 
-RX fija: **protocolo-agudeza-estado.md**.
+RX fija: **fases/agudeza/protocolo-estado.md**.
 
 ---
 

@@ -4,7 +4,7 @@ Servidor de examen visual con **agente intermedio** (OpenAI) + MQTT. Fase 1: agu
 
 Documentación de diseño: [../DISENO_AGENTE_INTERMEDIO.md](../DISENO_AGENTE_INTERMEDIO.md)
 
-Knowledge clínico (5 archivos por agente): [knowledge/README.md](./knowledge/README.md)
+Knowledge **core + fases** (multi-fase): [knowledge/README.md](./knowledge/README.md)
 
 ## Pipeline multi-agente
 
@@ -23,7 +23,8 @@ Cuando el ojo activo aún no tiene `letraActual` ni `logmarActual` (estado vací
 ```
 agents/          # llamadas OpenAI por rol
 pipelineTurno.js # orquestación + detectarModoTurno
-prompts/         # interprete.md, protocolo.md, comunicacion.md, auditor.md
+prompts/         # genéricos (interprete, auditor, comunicacion) + protocolo-agudeza.md
+lib/             # knowledge.js (carga por fase), estimulo.js
 ```
 
 ## Requisitos

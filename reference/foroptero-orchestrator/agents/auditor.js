@@ -1,9 +1,11 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
+import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { AUDITOR_SCHEMA } from './schemas.js';
 
 function construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo) {
-  const partes = [];
+  const fase = resolverFaseDesdeEstado(estadoAntes);
+  const partes = ['## Fase activa', `fase: ${fase}`];
 
   if (modo) {
     partes.push('## Modo del turno', `modo: ${modo}`);
@@ -43,8 +45,9 @@ export async function ejecutarAuditor(
   options = {}
 ) {
   const { modo } = options;
+  const fase = resolverFaseDesdeEstado(estadoAntes);
   const parsed = await llamarAgenteJson({
-    system: cargarSystemAgente('auditor'),
+    system: cargarSystemAgente('auditor', fase),
     user: construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo),
     schema: AUDITOR_SCHEMA,
     schemaName: 'agente_auditor',

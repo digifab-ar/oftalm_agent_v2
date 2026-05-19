@@ -1,30 +1,54 @@
-# Knowledge — POC agudeza (multi-agente)
+# Knowledge — examen visual multi-fase
 
-Cinco archivos por **responsabilidad de agente**. El servidor carga el subset que corresponda a cada llamada LLM.
+El servidor carga **core** (transversal) + **fases/{fase}/** según `estado.fase`. Ver `lib/knowledge.js`.
 
-| Archivo | Agente | Contenido |
-|---------|--------|-----------|
-| [interpretacion-paciente.md](./interpretacion-paciente.md) | Intérprete | Confianza, clasificación lingüística, tabla fonética Sloan |
-| [protocolo-agudeza-estado.md](./protocolo-agudeza-estado.md) | Protocolo | logMAR, `aciertosPorLogmar`, cierre, transición R→L, `evento` |
-| [dispositivos.md](./dispositivos.md) | Protocolo | Comandos y reglas MQTT foróptero + TV |
-| [comunicacion-paciente.md](./comunicacion-paciente.md) | Comunicación | Mensajes al paciente, `contextoVoz`, plantillas |
-| [auditoria-protocolo.md](./auditoria-protocolo.md) | Auditor | Anti-patrones, checklist, casos QA |
+## Estructura
 
-**Agente de voz** (Realtime): sin knowledge en esta carpeta; instrucciones en `src/app/agentConfigs/chatSupervisor/index.ts`.
+```text
+knowledge/
+  core/                    # intérprete, auditor, comunicación (todas las fases)
+  dispositivos.md          # MQTT foróptero + TV (compartido)
+  fases/
+    agudeza/               # fase 1 POC
+      interpretacion.md
+      protocolo-estado.md
+      auditoria.md
+      comunicacion.md
+    lentes/                # (futuro)
+```
 
-## Pipeline (objetivo)
+## Mapa agente × fase (agudeza)
+
+| Agente | Prompt | Knowledge |
+|--------|--------|-----------|
+| **intérprete** | `prompts/interprete.md` (genérico) | core/interpretacion-comun + fases/agudeza/interpretacion |
+| **auditor** | `prompts/auditor.md` (genérico) | core/auditoria-estructural + fases/agudeza/auditoria |
+| **comunicación** | `prompts/comunicacion.md` (genérico) | core/comunicacion-comun + fases/agudeza/comunicacion |
+| **protocolo** | `prompts/protocolo-agudeza.md` | fases/agudeza/protocolo-estado + dispositivos |
+
+## Pipeline
 
 ```
 Voz → servidor → Intérprete → Protocolo → Auditor → [merge + MQTT] → Comunicación → Voz
 ```
 
-El **pipeline** (`pipelineTurno.js`) carga solo el subset de cada agente vía `lib/knowledge.js` + su prompt en `prompts/`.  
-Modelos OpenAI: `lib/agentModels.js`.
+`pipelineTurno.js` + `lib/knowledge.js` + `lib/estimulo.js`.
 
-## Archivos reemplazados (2026-05)
+## Agregar una fase (ej. lentes)
+
+1. Crear `knowledge/fases/lentes/*.md` (4 archivos + opcional auditoría específica).
+2. Registrar en `FASE_KNOWLEDGE` en `lib/knowledge.js`.
+3. Crear `prompts/protocolo-lentes.md`.
+4. Extender `lib/estimulo.js` para el JSON de estímulo de lentes.
+
+Los prompts genéricos de intérprete, auditor y comunicación **no cambian**.
+
+## Archivos legacy (eliminados 2026-05-19)
 
 | Antes | Ahora |
 |-------|--------|
-| `examen-agudeza.md` | `protocolo-agudeza-estado.md` + partes en otros cuatro |
-| `letras-fonetica-es.md` | `interpretacion-paciente.md` (tabla fonética) |
-| `foroptero.md` + `tv.md` | `dispositivos.md` |
+| `interpretacion-paciente.md` | core + fases/agudeza/interpretacion |
+| `protocolo-agudeza-estado.md` | fases/agudeza/protocolo-estado |
+| `auditoria-protocolo.md` | core + fases/agudeza/auditoria |
+| `comunicacion-paciente.md` | core + fases/agudeza/comunicacion |
+| `prompts/protocolo.md` | `prompts/protocolo-agudeza.md` |

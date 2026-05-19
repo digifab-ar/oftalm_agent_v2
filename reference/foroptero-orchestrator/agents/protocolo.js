@@ -1,9 +1,11 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
+import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { PROTOCOLO_SCHEMA } from './schemas.js';
 
 function construirUser(estado, interpretacion, feedbackAuditor = null, modo) {
-  const partes = [];
+  const fase = resolverFaseDesdeEstado(estado);
+  const partes = ['## Fase activa', `fase: ${fase}`];
 
   if (modo) {
     partes.push('## Modo del turno', `modo: ${modo}`);
@@ -56,8 +58,9 @@ export async function ejecutarProtocolo(
   options = {}
 ) {
   const { modo } = options;
+  const fase = resolverFaseDesdeEstado(estado);
   const parsed = await llamarAgenteJson({
-    system: cargarSystemAgente('protocolo'),
+    system: cargarSystemAgente('protocolo', fase),
     user: construirUser(estado, interpretacion, feedbackAuditor, modo),
     schema: PROTOCOLO_SCHEMA,
     schemaName: 'agente_protocolo',

@@ -11,6 +11,12 @@ import { ejecutarComunicacion } from './agents/comunicacion.js';
 
 const MAX_REINTENTOS_PROTOCOLO = 1;
 
+const CLASIFICACIONES_CLINICAS_CLARAS = new Set([
+  'correcta',
+  'incorrecta',
+  'no_ve'
+]);
+
 /**
  * Detecta si el ojo activo aún no fue inicializado clínicamente (bootstrap).
  * @param {object} estado
@@ -69,14 +75,14 @@ function armarRazonamientoInterno(traza, modo) {
     .join('\n');
 }
 
-/** Fallback si hay letra en pantalla y el pipeline falla tras reintentos. */
+/** Fallback fonético / pipeline genérico. */
 function fallbackRepregunta() {
   return {
     propuestaProtocolo: {
       estadoPatch: {},
       acciones: [],
       evento: 'repregunta_sin_cambio',
-      detalleEvento: { motivo: 'fallback_pipeline' },
+      detalleEvento: { motivo: 'fallback_repregunta' },
       razonamientoProtocolo: 'fallback: repregunta sin cambio'
     },
     comunicacion: {
@@ -84,7 +90,36 @@ function fallbackRepregunta() {
         'No llegué a entender bien la letra. ¿Podés repetir el nombre de la letra que ves en la pantalla?'
       ],
       contextoVoz: 'esperar_respuesta',
-      razonamientoComunicacion: 'fallback pipeline'
+      razonamientoComunicacion: 'fallback repregunta'
+    }
+  };
+}
+
+/** Fallback cuando el auditor rechaza tras reintentos (no confundir con ambigua fonética). */
+function fallbackAuditoria(interpretacion) {
+  const clas = interpretacion?.clasificacion;
+  const clinicaClara = CLASIFICACIONES_CLINICAS_CLARAS.has(clas);
+
+  return {
+    propuestaProtocolo: {
+      estadoPatch: {},
+      acciones: [],
+      evento: 'repregunta_sin_cambio',
+      detalleEvento: { motivo: 'fallback_auditoria' },
+      razonamientoProtocolo: 'fallback: auditoría rechazó propuesta de protocolo'
+    },
+    comunicacion: {
+      mensajesPaciente: clinicaClara
+        ? [
+            'Un momento, estoy ajustando el examen. Mirá la pantalla y decime qué letra ves.'
+          ]
+        : [
+            'No llegué a entender bien la letra. ¿Podés repetir el nombre de la letra que ves en la pantalla?'
+          ],
+      contextoVoz: 'esperar_respuesta',
+      razonamientoComunicacion: clinicaClara
+        ? 'fallback auditoría (respuesta clínica entendida)'
+        : 'fallback auditoría (repregunta fonética)'
     }
   };
 }
@@ -162,7 +197,7 @@ export async function procesarTurnoPipeline(
   }
 
   const modo = detectarModoTurno(estadoAntes);
-  console.log(`📋 Pipeline modo turno: ${modo}`);
+  console.log(`📋 Pipeline modo turno: ${modo} (fase: ${estadoAntes.fase})`);
 
   const conf =
     typeof confianza === 'number' && !Number.isNaN(confianza)
@@ -206,22 +241,31 @@ export async function procesarTurnoPipeline(
 
     let propuestaAplicar = traza.propuestaProtocolo;
     let comunicacion;
+    let huboCambioDispositivo = false;
 
     if (traza.falloAuditor) {
-      const fb = modo === 'bootstrap' ? fallbackBootstrap() : fallbackRepregunta();
+      let fb;
+      if (modo === 'bootstrap') {
+        fb = fallbackBootstrap();
+      } else {
+        fb = fallbackAuditoria(traza.interpretacion);
+      }
       propuestaAplicar = fb.propuestaProtocolo;
       comunicacion = fb.comunicacion;
       console.warn(
         `⚠️ Pipeline (${modo}): auditor rechazó tras reintentos; fallback ${
-          modo === 'bootstrap' ? 'bootstrap' : 'repregunta'
+          propuestaAplicar.detalleEvento?.motivo ?? 'desconocido'
         }`
       );
     } else {
+      huboCambioDispositivo =
+        Array.isArray(propuestaAplicar.acciones) &&
+        propuestaAplicar.acciones.length > 0;
       comunicacion = await ejecutarComunicacion(
         traza.interpretacion,
         propuestaAplicar,
         estadoAntes,
-        { modo }
+        { modo, huboCambioDispositivo }
       );
     }
 

@@ -1,4 +1,5 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
+import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { COMUNICACION_SCHEMA } from './schemas.js';
 
@@ -9,18 +10,27 @@ const CONTEXTO_VOZ_VALIDOS = new Set([
 ]);
 
 function estadoResumido(estado) {
+  const ojo = estado.ojoActual;
+  const ag = estado.agudeza?.[ojo];
   return {
     fase: estado.fase,
-    ojoActual: estado.ojoActual,
+    ojoActual: ojo,
     R_cerrado: estado.agudeza?.R?.logmarFinal != null,
     L_cerrado: estado.agudeza?.L?.logmarFinal != null,
-    logmarActual: estado.agudeza?.[estado.ojoActual]?.logmarActual,
-    letraActual: estado.agudeza?.[estado.ojoActual]?.letraActual
+    logmarActual: ag?.logmarActual ?? null,
+    letraActual: ag?.letraActual ?? null
   };
 }
 
-function construirUser(interpretacion, decisionProtocolo, estado, modo) {
-  const partes = [];
+function construirUser(
+  interpretacion,
+  decisionProtocolo,
+  estado,
+  modo,
+  huboCambioDispositivo
+) {
+  const fase = resolverFaseDesdeEstado(estado);
+  const partes = ['## Fase activa', `fase: ${fase}`];
 
   if (modo) {
     partes.push('## Modo del turno', `modo: ${modo}`);
@@ -42,6 +52,8 @@ function construirUser(interpretacion, decisionProtocolo, estado, modo) {
       2
     ),
     '```',
+    '## Cambio de dispositivos en este turno',
+    `huboCambioDispositivo: ${Boolean(huboCambioDispositivo)}`,
     '## Estado resumido',
     '```json',
     JSON.stringify(estadoResumido(estado), null, 2),
@@ -77,10 +89,17 @@ export async function ejecutarComunicacion(
   estado,
   options = {}
 ) {
-  const { modo } = options;
+  const { modo, huboCambioDispositivo = false } = options;
+  const fase = resolverFaseDesdeEstado(estado);
   const parsed = await llamarAgenteJson({
-    system: cargarSystemAgente('comunicacion'),
-    user: construirUser(interpretacion, decisionProtocolo, estado, modo),
+    system: cargarSystemAgente('comunicacion', fase),
+    user: construirUser(
+      interpretacion,
+      decisionProtocolo,
+      estado,
+      modo,
+      huboCambioDispositivo
+    ),
     schema: COMUNICACION_SCHEMA,
     schemaName: 'agente_comunicacion',
     agente: 'comunicacion'

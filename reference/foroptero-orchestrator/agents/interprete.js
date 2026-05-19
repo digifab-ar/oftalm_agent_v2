@@ -1,31 +1,22 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
+import { estimuloParaInterprete, resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { INTERPRETE_SCHEMA } from './schemas.js';
 
-function estadoParaInterprete(estado) {
-  const ojo = estado.ojoActual;
-  const ag = estado.agudeza?.[ojo] ?? {};
-  return {
-    ojoActual: ojo,
-    letraActual: ag.letraActual,
-    logmarActual: ag.logmarActual,
-    logmarFinal: ag.logmarFinal
-  };
-}
-
 function construirUser(estado, respuestaPaciente, confianza, modo) {
-  const partes = [];
+  const fase = resolverFaseDesdeEstado(estado);
+  const partes = [
+    '## Fase activa',
+    `fase: ${fase}`,
+    '## Estímulo de referencia',
+    '```json',
+    JSON.stringify(estimuloParaInterprete(estado), null, 2),
+    '```'
+  ];
 
   if (modo) {
     partes.push('## Modo del turno', `modo: ${modo}`);
   }
-
-  partes.push(
-    '## Contexto del ojo en test',
-    '```json',
-    JSON.stringify(estadoParaInterprete(estado), null, 2),
-    '```'
-  );
 
   if (
     respuestaPaciente != null &&
@@ -78,8 +69,9 @@ export async function ejecutarInterprete(
     return interpretacionBootstrapHardcoded();
   }
 
+  const fase = resolverFaseDesdeEstado(estado);
   const parsed = await llamarAgenteJson({
-    system: cargarSystemAgente('interprete'),
+    system: cargarSystemAgente('interprete', fase),
     user: construirUser(estado, respuestaPaciente, confianza, modo),
     schema: INTERPRETE_SCHEMA,
     schemaName: 'agente_interprete',
