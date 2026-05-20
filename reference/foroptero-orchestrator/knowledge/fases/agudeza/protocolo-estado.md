@@ -1,31 +1,20 @@
-# Protocolo de agudeza visual — estado y transiciones
+# Protocolo de agudeza visual — referencia del sistema
 
-**Fase:** `agudeza`.  
-**Agente:** protocolo.  
-**Prompt de rol:** `prompts/protocolo-agudeza.md` (repite pasos críticos del árbol).
+**Fase:** `agudeza`. **Tipo:** documento de referencia (no instrucciones operativas).
 
-Referencias: **dispositivos.md**; auditoría en **auditoria.md**; interpretación en **interpretacion.md**.
+Las instrucciones operativas del agente protocolo viven en `prompts/protocolo-agudeza.md` (tabla de decisión + plantillas A–F). Este archivo describe **qué es el estado**, **qué reglas existen** y **qué regresiones están documentadas**.
 
----
+**Audiencias:** agente protocolo (contexto), agente auditor (validación vía `auditoria.md`), humanos (mantenimiento, QA).
 
-## Fuente de verdad del estado
-
-- El JSON del user es el estado **tras registro del intento** en servidor (`registrarIntentoAgudeza` en el pipeline).
-- Campos clave: `ojoActual`, `agudeza.{ojo}.logmarActual`, `letraActual`, `resultadosPorLogmar`, `letrasUsadas`, `logmarFinal`.
-- **Contadores:** leé `resultadosPorLogmar[logmar].correcto` / `.incorrecto` — ya incluyen este turno. **No simules +1.**
-- **Prohibido** incluir `resultadosPorLogmar` ni `aciertosPorLogmar` en `estadoPatch` (el merge del servidor los preserva si no vienen en el patch).
-- **Prohibido inferir** valores desde el historial conversacional o el “avance esperado”.
+**Referencias cruzadas:** `dispositivos.md`, `interpretacion.md`, `auditoria.md`, `../core/auditoria-estructural.md`, `agents/schemas.js`, `fixtures/auditor/`.
 
 ---
 
-## Alcance
+## Alcance clínico
 
-- Test de **agudeza** monocular: **R** → **L**.
-- Sin lentes ni binocular en esta fase.
-
----
-
-## RX fija (POC)
+- Test de **agudeza** monocular: **R** → **L**, sin lentes, sin binocular.
+- Escala logMAR: **0.3, 0.2, 0.1, 0.0** (un paso por vez).
+- RX fija (POC):
 
 | Ojo | Esfera | Cilindro | Ángulo |
 |-----|--------|----------|--------|
@@ -34,24 +23,54 @@ Referencias: **dispositivos.md**; auditoría en **auditoria.md**; interpretació
 
 ---
 
-## Campos de estado
+## Modelo de estado
 
-Por ojo en `agudeza.R` / `agudeza.L`:
+| Capa | Campos | Quién lee | Quién escribe |
+|------|--------|-----------|---------------|
+| Globales | `fase`, `ojoActual`, `finalizado`, `rx`, `iniciado`, `historial`, `intentosRegistrados` | todos | servidor |
+| `agudeza.{ojo}` operativos | `logmarActual`, `letraActual`, `letrasUsadas`, `logmarFinal` | todos | protocolo (vía patch) |
+| `agudeza.{ojo}` contadores | `resultadosPorLogmar`, `aciertosPorLogmar` | todos | **solo servidor** |
+| Legacy / no usar | `letraFinal`, `confirmaciones`, `ultimoLogmarCorrecto` | nadie | nadie |
 
-- `logmarActual`, `letraActual`, `resultadosPorLogmar` (por nivel: `correcto`, `incorrecto`), `logmarFinal`, `letrasUsadas`
-- `aciertosPorLogmar` (legacy, espejo de `correcto`) — **solo lectura**; no escribir en patch
-- `letraFinal` (legacy, opcional) — **no usar** en cierres nuevos; solo `logmarFinal`
+**Derivados:**
 
-Globales: `fase`, `ojoActual`, `finalizado`.
-
-- **R cerrado** = `agudeza.R.logmarFinal != null`
-- **`fase: finalizado`** solo si **L** cerrado
+- **R cerrado**: `agudeza.R.logmarFinal != null`.
+- **L cerrado**: `agudeza.L.logmarFinal != null`.
+- **`fase: "finalizado"`**: solo si **L** cerrado.
+- **`aciertosPorLogmar[k]`** = espejo legacy de `resultadosPorLogmar[k].correcto` (sincronizado por el servidor).
 
 ---
 
-## Gramática del patch (protocolo y auditor)
+## Responsabilidades por componente
 
-Tabla compartida: el protocolo **emite** esta forma; el auditor **rechaza** si no se cumple. Referencia única para rutas JSON.
+| Acción | Componente | Detalle |
+|--------|------------|---------|
+| Incrementar `resultadosPorLogmar` | Servidor (`registrarIntentoAgudeza`) | Antes de invocar al protocolo, según `clasificacion` del intérprete |
+| Sanear patch | Servidor (`sanitizarPatchProtocolo`) | Elimina `resultadosPorLogmar` / `aciertosPorLogmar` antes del merge, aunque el LLM los emita |
+| Emitir `estadoPatch` + `acciones` + `evento` | Protocolo (LLM) | Sin contadores; según *Decisión clínica* y *Gramática del patch* |
+| Validar forma + clínica | Auditor (LLM) | Capa 0 (forma), capa 1 (estructural), capa 2 (clínica de fase) |
+| Aplicar patch | Servidor (`aplicarEstadoPatch`) | `deepMerge` sobre el estado en memoria |
+| Ejecutar MQTT | Servidor (`ejecutarAcciones`) | Foróptero / TV, en el orden de la lista de acciones |
+
+**Implicación clave:** el protocolo nunca escribe contadores. Si los emite, el servidor los descarta y el auditor debe rechazar la propuesta.
+
+---
+
+## Gramática del patch (canónica)
+
+Fuente única de rutas y forma del `estadoPatch`. El protocolo emite con esta forma; el auditor rechaza si no se cumple.
+
+### Lista blanca de claves en `estadoPatch`
+
+Solo: `fase`, `ojoActual`, `finalizado`, `agudeza`. Cualquier otra clave en la raíz del patch es inválida.
+
+### Rutas prohibidas
+
+- `estadoPatch.R` o `estadoPatch.L` en la raíz (los ojos van bajo `agudeza`).
+- `resultadosPorLogmar` o `aciertosPorLogmar` en cualquier nivel.
+- `letraFinal` en cierres nuevos (campo legacy).
+
+### Forma por evento
 
 | `evento` | Campos obligatorios en `estadoPatch` | `ojoActual` en patch |
 |----------|--------------------------------------|----------------------|
@@ -61,247 +80,139 @@ Tabla compartida: el protocolo **emite** esta forma; el auditor **rechaza** si n
 | `examen_finalizado` | `agudeza.L.logmarFinal` + `fase: "finalizado"` | sin cambio obligatorio |
 | `repregunta_sin_cambio` | `{}` | sin cambio |
 
-**Rutas prohibidas en `estadoPatch`:** `R` o `L` en la raíz del patch; `resultadosPorLogmar`; `aciertosPorLogmar`; `letraFinal` en cierres nuevos.
+### Checklist de forma (sí/no antes de aplicar)
 
-**Checklist de forma (sí/no antes de emitir):**
+1. ¿Cada ojo mutado está bajo `estadoPatch.agudeza.{R|L}`?
+2. Si `evento === "cierre_ojo_R_e_inicio_L"`: ¿existen `ojoActual: "L"`, `agudeza.R.logmarFinal`, `agudeza.L` H@0.3?
+3. ¿El patch no incluye `resultadosPorLogmar` ni `aciertosPorLogmar`?
+4. Si hay acción `tv`: ¿`letra`/`logmar` = `agudeza.{ojo}` del patch (ojo activo tras merge)?
+5. ¿Solo claves de la lista blanca?
 
-1. ¿Cada ojo mutado está en `estadoPatch.agudeza.{R|L}`?
-2. Si `evento === "cierre_ojo_R_e_inicio_L"`: ¿existen `ojoActual: "L"`, `agudeza.R.logmarFinal`, `agudeza.L` con H@0.3?
-3. ¿El patch no incluye contadores?
-4. Si hay `tv`: ¿`letra`/`logmar` = `agudeza.{ojo}` del patch (ojo activo tras el merge)?
-5. ¿Solo claves de la lista blanca (`fase`, `ojoActual`, `finalizado`, `agudeza`)?
+### Coherencia `tv` ↔ patch
 
----
+| Campo patch | Campo `tv` |
+|-------------|-----------|
+| `agudeza.{ojo}.logmarActual` | `logmar` |
+| `agudeza.{ojo}.letraActual` | `letra` |
 
-## Inicio del test por ojo (`modo: bootstrap`)
-
-1. Foróptero: RX + oclusión contralateral.
-2. `logmarActual: 0.3`, `letraActual: H`, `resultadosPorLogmar` en 0, `letrasUsadas: ["H"]`.
-3. TV: H @ 0.3.
-4. `evento: inicio_ojo`.
+En `cierre_ojo_R_e_inicio_L`, la `tv` lleva la letra y logMAR de **L** (H@0.3), no de R.
 
 ---
 
-## Clasificaciones del intérprete
+## Decisión clínica
 
-| Clasificación | Efecto |
-|---------------|--------|
-| **correcta** | Árbol post-correcta (abajo). El servidor ya incrementó `correcto`; el patch solo cambia estímulo / cierre. |
-| **incorrecta** / **no_ve** | Subir un paso logMAR (o 0.3 + rotar letra); servidor ya incrementó `incorrecto`; patch **sin** contadores; `tv`. |
-| **ambigua** / **confianza_baja** | `acciones: []`, `repregunta_sin_cambio`. |
-| **frase_paciente_no_clinica** | Sin `fase: finalizado` si L no cerró. |
+Tabla canónica: cómo se elige la rama del protocolo según `clasificacion` del intérprete y el estado **tras registro del intento**. La versión operativa para el agente vive en `prompts/protocolo-agudeza.md` (Tabla de decisión + plantillas A–F).
 
----
+### Variables
 
-## Regla de contadores (`resultadosPorLogmar`)
+- `c = resultadosPorLogmar[logmarActual].correcto` del ojo activo (ya incrementado por el servidor).
+- `logmarActual`, `ojoActual` del JSON literal.
 
-**Fuente de verdad:** `agudeza.{ojo}.resultadosPorLogmar` del JSON recibido en el user (**tras registro del intento** en el orquestador).
+### Tabla de ramas
 
-Por nivel logMAR: `{ "correcto": n, "incorrecto": m }`. Legacy: `aciertosPorLogmar[k]` = `resultadosPorLogmar[k].correcto` (sincronizado en código).
+| `clasificacion` | Condición sobre estado (tras registro) | Rama | `evento` |
+|-----------------|----------------------------------------|------|----------|
+| `continuacion` (bootstrap) | `agudeza[ojoActual].logmarActual == null` | BOOTSTRAP | `inicio_ojo` |
+| `correcta` | `c == 1` y `logmarActual > 0.0` | BAJAR | `siguiente_optotipo` |
+| `correcta` | `c == 1` y `logmarActual == 0.0` | ROTAR_0 | `siguiente_optotipo` |
+| `correcta` | `c >= 2` y `ojoActual == "R"` | CIERRE_R_L | `cierre_ojo_R_e_inicio_L` |
+| `correcta` | `c >= 2` y `ojoActual == "L"` | CIERRE_FINAL | `examen_finalizado` |
+| `incorrecta` / `no_ve` | `logmarActual ∈ {0.2, 0.1, 0.0}` | SUBIR | `siguiente_optotipo` |
+| `incorrecta` / `no_ve` | `logmarActual == 0.3` | ROTAR_TOPE | `siguiente_optotipo` |
+| `ambigua` / `confianza_baja` | — | REPREGUNTA | `repregunta_sin_cambio` |
+| `frase_paciente_no_clinica` | L no cerrado | REPREGUNTA | `repregunta_sin_cambio` |
 
-| Clasificación | Registro (servidor, antes del protocolo) | Patch del protocolo |
-|---------------|----------------------------------------|---------------------|
-| **correcta** | `correcto += 1` en logMAR del estímulo | **Prohibido** incluir `resultadosPorLogmar` / `aciertosPorLogmar` |
-| **incorrecta** / **no_ve** | `incorrecto += 1` en logMAR del estímulo | **Prohibido** incluir contadores |
-| **ambigua** / **confianza_baja** | Sin cambio | `estadoPatch: {}` |
-| **continuacion** (bootstrap) | Sin registro | Inicializar estímulo; contadores ya en 0 en memoria |
+### Regla dura
 
-**Acumulación a lo largo del examen.** Los `resultadosPorLogmar[k].correcto` son **acumulativos** en el ojo activo. Un `no_ve`/`incorrecta` en otro logMAR **no** resetea correctos previos (el servidor solo suma `incorrecto` en el logMAR del estímulo). Ej.: `0.2 correcta → 0.1 no_ve → 0.2 correcta` → `0.2.correcto` pasa de 1 a 2 ⇒ cierre, aunque no sean consecutivas en pantalla.
+**`c < 2` ⇒ nunca CIERRE_R_L ni CIERRE_FINAL.** El cierre por ojo requiere dos aciertos acumulados en el mismo logMAR del ojo activo (ver BUG-003).
 
-**Prohibido en el patch del protocolo:**
+### Acumulación de contadores
 
-- Incluir `resultadosPorLogmar` o `aciertosPorLogmar` (el código los elimina del merge si el LLM los manda).
-- En `no_ve`/`incorrecta`, el patch solo cambia `logmarActual`, `letraActual`, `letrasUsadas`.
+`resultadosPorLogmar[k].correcto` es **acumulativo** en el ojo activo. Un `no_ve` / `incorrecta` en otro logMAR no resetea aciertos previos. Ejemplo:
 
-### Ejemplo correcto (`no_ve` en 0.1 con `0.2.correcto: 1` previo)
+- T1 `correcta` en 0.2 → `0.2.correcto: 1`.
+- T2 `no_ve` en 0.1 → `0.1.incorrecto: 1` (los aciertos de 0.2 no se tocan).
+- T3 `correcta` en 0.2 → `0.2.correcto: 2` ⇒ cierre del ojo (las dos correctas no eran consecutivas en pantalla).
 
-Estado tras registro del `no_ve`: `0.1.incorrecto` ya incrementado.
+### Bootstrap
 
-```text
-patch.agudeza.R = {
-  logmarActual: 0.2,
-  letraActual: "E",
-  letrasUsadas: ["H","O","T","E"]
-  // sin resultadosPorLogmar ni aciertosPorLogmar
-}
-```
-
-### Ejemplo incorrecto (regresión — patch con contadores)
-
-```text
-patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, ...}  // RECHAZAR
-```
+Bootstrap aplica cuando el pipeline detecta `agudeza[ojoActual].letraActual == null && logmarActual == null && logmarFinal == null` (ver `detectarModoTurno` en `pipelineTurno.js`). El user prompt incluye `modo: bootstrap`. En ese turno no hay registro de intento ni respuesta del paciente; los contadores ya están en 0 en memoria y no van en el patch.
 
 ---
 
-## Escala logMAR
+## Eventos del protocolo
 
-**0.3, 0.2, 0.1, 0.0**
+Enum completo del schema (`agents/schemas.js`): `inicio_ojo`, `siguiente_optotipo`, `repregunta_sin_cambio`, `cierre_ojo_R_e_inicio_L`, `examen_finalizado`, `cierre_ojo_R`, `cierre_ojo_L`, `continuacion_dispositivos`, `esperar_primera_respuesta`, `error_bootstrap`.
 
-- Subida (incorrecta/no_ve): un paso; en **0.3** solo rotar letra.
-- Bajada (correcta, contador = 1): un paso hacia más chico.
+### Eventos clínicos activos
 
----
+| `evento` | Cuándo se emite | Patch típico | Acciones | Restricciones |
+|----------|-----------------|--------------|----------|---------------|
+| `inicio_ojo` | Bootstrap por ojo | `ojoActual` + `agudeza.{ojo}` H@0.3, `letrasUsadas:["H"]` | foróptero (RX ojo activo + oclusión contralateral) + tv H@0.3 | Sin registro de intento |
+| `siguiente_optotipo` | Bajar / subir / rotar en el mismo ojo | `agudeza.{ojoActivo}` con `logmarActual`, `letraActual`, `letrasUsadas` | tv (alineada al patch) | Sin cambio de `ojoActual` |
+| `repregunta_sin_cambio` | `ambigua` / `confianza_baja` / `frase_paciente_no_clinica` | `{}` | `[]` | Sin registro |
+| `cierre_ojo_R_e_inicio_L` | `c >= 2` con `correcta` en R | `ojoActual:"L"` + `agudeza.R.logmarFinal` + `agudeza.L` H@0.3 + `letrasUsadas:["H"]` | foróptero (R close, L open + RX_L) + tv H@0.3 | **Atómico**: las tres partes obligatorias en el mismo JSON |
+| `examen_finalizado` | `c >= 2` con `correcta` en L | `agudeza.L.logmarFinal` + `fase:"finalizado"` + `finalizado: <ts>` | — | Sin `tv` |
 
-## Árbol tras **correcta** (orden estricto)
+### Eventos sin uso clínico actual
 
-1. Leé `c = resultadosPorLogmar[logmarActual].correcto` (ya incluye este turno; **no** simules +1).
-2. Si **≥ 2**: `logmarFinal` = ese logMAR (**sin** `letraFinal`); si **R** → transición R→L (mismo turno); si **L** → `fase: finalizado`; **sin** bajar ni `tv` en ese ojo.
-3. Si **= 1** y `logmarActual > 0.0`: **bajar** logMAR, rotar letra Sloan, **`tv` obligatoria**, `evento: siguiente_optotipo`.
-4. Si **= 1** y `logmarActual == 0.0`: rotar letra, `tv`, `siguiente_optotipo`.
-
-**Prohibido (clasificación `correcta`):**
-
-- Emitir `estadoPatch: {}` o `acciones: []`. La clasificación `correcta` **siempre** produce cambio de estado: rama 2 (≥ 2) → patch de cierre + (R) transición a L en el mismo turno o (L) `fase: finalizado`; rama 3 (= 1, `logmarActual > 0.0`) → bajada de logMAR + nueva letra + `tv`; rama 4 (= 1, `logmarActual == 0.0`) → rotación de letra + `tv`.
-- Usar `evento: repregunta_sin_cambio` ante `correcta` (ese evento es exclusivo de `ambigua`/`confianza_baja`).
-- `siguiente_optotipo` con `acciones: []` cuando el paso 3 o 4 exige cambio de letra/logMAR.
-- `siguiente_optotipo` o `tv` sobre el ojo R cuando `resultadosPorLogmar[logmarActual].correcto >= 2` en R (la rama cierre manda y exige `cierre_ojo_R_e_inicio_L`).
+- `cierre_ojo_R`, `cierre_ojo_L`: superados por `cierre_ojo_R_e_inicio_L` y `examen_finalizado`. **No emitir.**
+- `continuacion_dispositivos`, `esperar_primera_respuesta`: reservados; sin uso documentado.
+- `error_bootstrap`: fallback del pipeline ante error de arranque (`fallbackBootstrap` en `pipelineTurno.js`).
 
 ---
 
-## Transición R → L (mismo turno)
+## Convenciones de letras Sloan
 
-1. Patch **`agudeza.L`**: H@0.3, `letrasUsadas: ["H"]` (sin contadores en patch).
-2. Patch **`agudeza.R`**: solo `logmarFinal` (sin `letraFinal`).
-3. **`ojoActual: "L"`** en `estadoPatch` (mismo nivel que `agudeza`).
-4. `acciones`: foróptero (L open, R close) + TV H@0.3.
-5. `evento: cierre_ojo_R_e_inicio_L`.
+Vocabulario válido: **H, O, T, E, C, F, Z, L, P, D**.
 
-### REGRESIÓN 2026-05-19 — `L` mal anidado (RECHAZAR)
-
-Propuesta inválida del log (turno 5): MQTT correcto, **memoria incorrecta**. El auditor debe rechazar aunque foróptero + TV estén bien.
-
-```json
-{
-  "estadoPatch": {
-    "agudeza": { "R": { "logmarFinal": 0.2 } },
-    "L": { "logmarActual": 0.3, "letraActual": "H", "letrasUsadas": ["H"] }
-  },
-  "evento": "cierre_ojo_R_e_inicio_L",
-  "acciones": [ "... foroptero + tv H@0.3 ..." ]
-}
-```
-
-Defectos: `L` en raíz del patch (debe ser `agudeza.L`); falta `ojoActual: "L"`. Tras merge, `ojoActual` sigue `"R"` → intérprete y registro operan sobre R.
-
-**Corrección:** usar el *Ejemplo literal* de abajo (misma estructura que la plantilla en `protocolo-agudeza.md`).
-
-**Atomicidad.** La transición R → L se emite como **una operación atómica** dentro del mismo turno: patch (R cierre con **`logmarFinal` solo** — sin `letraFinal` — + L inicializado a H@0.3 con `letrasUsadas:["H"]` **sin contadores en patch** + `ojoActual:"L"`) **+** `evento: "cierre_ojo_R_e_inicio_L"` **+** `acciones` (foróptero R close / L open + RX_L de `estadoAntes.rx.L`, luego TV H@0.3). Los contadores (`resultadosPorLogmar`) los escribe el servidor al registrar el intento; el protocolo **no** los incluye en el patch. Está **prohibido** emitir solo el patch sin evento/acciones, o cambiar `ojoActual` sin `logmarFinal` en R. Faltar cualquiera de los tres bloques invalida la propuesta.
-
-### Ejemplo literal (rama 2 en ojo R, post `no_ve` intercalado — regresión log 2026-05-19)
-
-Estado que recibe el **protocolo** (tras registro del intento en servidor; el servidor ya incrementó `0.2.correcto` a 2):
-
-```json
-{
-  "ojoActual": "R",
-  "rx": { "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0 } },
-  "agudeza": {
-    "R": {
-      "logmarActual": 0.2,
-      "letraActual": "E",
-      "resultadosPorLogmar": {
-        "0.3": { "correcto": 1, "incorrecto": 0 },
-        "0.2": { "correcto": 2, "incorrecto": 0 },
-        "0.1": { "correcto": 0, "incorrecto": 0 },
-        "0.0": { "correcto": 0, "incorrecto": 0 }
-      },
-      "letrasUsadas": ["H", "O", "T", "E"]
-    },
-    "L": {
-      "logmarActual": null,
-      "letraActual": null,
-      "resultadosPorLogmar": {
-        "0.3": { "correcto": 0, "incorrecto": 0 },
-        "0.2": { "correcto": 0, "incorrecto": 0 },
-        "0.1": { "correcto": 0, "incorrecto": 0 },
-        "0.0": { "correcto": 0, "incorrecto": 0 }
-      },
-      "letrasUsadas": []
-    }
-  }
-}
-```
-
-`interpretacion.clasificacion === "correcta"`, `letraElegida === "E"`.
-
-Propuesta esperada del protocolo (**sin** `resultadosPorLogmar`, `aciertosPorLogmar` ni `letraFinal` en el patch):
-
-```json
-{
-  "estadoPatch": {
-    "ojoActual": "L",
-    "agudeza": {
-      "R": {
-        "logmarFinal": 0.2
-      },
-      "L": {
-        "logmarActual": 0.3,
-        "letraActual": "H",
-        "letrasUsadas": ["H"]
-      }
-    }
-  },
-  "acciones": [
-    {
-      "dispositivo": "foroptero",
-      "config": {
-        "R": { "occlusion": "close" },
-        "L": { "occlusion": "open", "esfera": 2.75, "cilindro": 0, "angulo": 0 }
-      }
-    },
-    { "dispositivo": "tv", "letra": "H", "logmar": 0.3 }
-  ],
-  "evento": "cierre_ojo_R_e_inicio_L",
-  "detalleEvento": {},
-  "razonamientoProtocolo": "resultadosPorLogmar[0.2].correcto = 2 (ya registrado) ⇒ cierre R. Patch: logmarFinal 0.2 en R; L H@0.3; foróptero + TV."
-}
-```
-
-En memoria, tras `aplicarEstadoPatch`, `resultadosPorLogmar` de R **permanece** con `0.2.correcto: 2` (el merge no los toca porque no vienen en el patch).
-
-### Ejemplo de propuesta inválida (regresión log 2026-05-19 turno 5, segunda corrida)
-
-Esta propuesta **debe ser rechazada** por el auditor con anti-patrón "patch parcial en rama 2":
-
-```json
-{
-  "estadoPatch": {
-    "ojoActual": "L",
-    "agudeza": {
-      "R": { "logmarFinal": 0.2 }
-    }
-  },
-  "acciones": [],
-  "evento": "siguiente_optotipo",
-  "detalleEvento": {},
-  "razonamientoProtocolo": "Correcta en 0.2; cambio ojo a L."
-}
-```
-
-Motivos de rechazo (deben aparecer **todos** en `violaciones`, ninguno hipotético de otras ramas):
-
-- Falta `agudeza.R.logmarFinal` en el patch.
-- Falta el bloque `agudeza.L` inicializado a `logmarActual:0.3`, `letraActual:"H"`, `letrasUsadas:["H"]` (sin contadores en patch).
-- `evento` debería ser `"cierre_ojo_R_e_inicio_L"`, no `"siguiente_optotipo"`.
-- `acciones: []` viola la atomicidad: deben incluirse foróptero (R close, L open + RX_L) y TV H@0.3.
-
-**Corrección**: reemplazar por el "Ejemplo literal" de arriba.
+- Rotación sin repetir en el mismo ojo (`letrasUsadas` crece por ojo).
+- Pool lleno (las 10 usadas) + examen en curso: repetir con criterio clínico, priorizando baja confusión fonética con la letra previa.
+- Cierre R→L y bootstrap inicializan `letrasUsadas: ["H"]` para el ojo nuevo.
+- Pares de riesgo fonético (H↔C, E↔C, T↔P, F↔S): definidos en `interpretacion.md`.
 
 ---
 
-## Letras Sloan
+## Catálogo de regresiones
 
-H, O, T, E, C, F, Z, L, P, D — rotación sin repetir en el mismo ojo.
+Bugs históricos con estado, propuesta inválida y corrección. Citar el ID en `violaciones` del auditor para trazabilidad.
+
+### BUG-001 — `L` mal anidado en cierre R→L (2026-05-19, turno 5)
+
+- **Componente:** protocolo.
+- **Estado de entrada:** R con `0.2.correcto: 2`, `ojoActual: "R"`, post-`no_ve` intercalado en 0.1.
+- **Propuesta inválida:** `L` como hermano de `agudeza` (en la raíz de `estadoPatch`), **sin** `ojoActual: "L"`; MQTT correctos.
+- **Efecto:** tras `deepMerge`, `ojoActual` siguió en `"R"`; el intérprete y el registro operaron sobre R mientras la TV mostraba L H@0.3 → cascada de turnos erróneos T6–T9.
+- **Regla violada:** *Gramática del patch* (rutas prohibidas) + *Eventos* (atomicidad de `cierre_ojo_R_e_inicio_L`).
+- **Mitigación:** auditor capa 0 (validación de rutas JSON en `core/auditoria-estructural.md`).
+- **Propuesta correcta:** Plantilla D en `prompts/protocolo-agudeza.md`.
+- **Fixtures:** `fixtures/auditor/AUD-04-correcta-cierre-R.json` (positivo); pendiente `AUD-08` (negativo).
+
+### BUG-002 — Auditor aprobó BUG-001 (2026-05-19, turno 5)
+
+- **Componente:** auditor.
+- **Síntoma:** validó la intención clínica (cierre R→L con acciones correctas) sin chequear rutas JSON del patch.
+- **Regla agregada:** capa 0 de forma en `core/auditoria-estructural.md` § *Validación de rutas JSON*; orden obligatorio forma → estructural → fase.
+- **Mitigación:** auditor con paso 0 explícito antes del checklist clínico.
+
+### BUG-003 — Cierre prematuro con `c = 1` (2026-05-20, turno 2)
+
+- **Componente:** protocolo.
+- **Estado de entrada:** R con `0.3.correcto: 1`, `logmarActual: 0.3`, primer acierto del examen.
+- **Propuesta inválida:** `cierre_ojo_R_e_inicio_L` con `logmarFinal: 0.3` (interpretó c=1 como c≥2).
+- **Efecto:** auditor rechazó; fallback dejó el estado congelado en H@0.3 sin avance, intento ya consumido.
+- **Regla violada:** *Decisión clínica*, regla dura `c < 2` ⇒ nunca cerrar.
+- **Mitigación:** *Tabla de decisión* explícita en prompt + regla dura citada debajo + cita del bug en plantilla B.
+- **Propuesta correcta:** Plantilla B (BAJAR) — `agudeza.R.logmarActual: 0.2`, letra Sloan no usada, `tv` @0.2, `evento: "siguiente_optotipo"`.
+- **Fixtures:** pendiente `AUD-11` (rechazo de cierre con `c = 1`).
 
 ---
 
-## Eventos
+## Referencias
 
-| `evento` | Significado |
-|----------|-------------|
-| `inicio_ojo` | Primer optotipo del ojo |
-| `siguiente_optotipo` | Cambió letra o logMAR en el mismo ojo |
-| `repregunta_sin_cambio` | ambigua / confianza_baja |
-| `cierre_ojo_R_e_inicio_L` | R cerrado + L iniciado con MQTT |
-| `examen_finalizado` | L cerrado |
+- `prompts/protocolo-agudeza.md` — instrucciones operativas (Tabla de decisión + plantillas A–F del agente protocolo).
+- `knowledge/fases/agudeza/auditoria.md` — checklist clínico del auditor.
+- `knowledge/fases/agudeza/interpretacion.md` — vocabulario Sloan y tabla fonética.
+- `knowledge/core/auditoria-estructural.md` — reglas estructurales transversales y validación de rutas JSON.
+- `agents/schemas.js` — schema JSON del agente protocolo.
+- `fixtures/auditor/` — casos de QA manual del auditor.

@@ -1,7 +1,7 @@
 # Auditoría — fase agudeza visual
 
 **Fase:** `agudeza`.  
-**Reglas clínicas completas:** `protocolo-estado.md` (no reescribas el árbol aquí; validá cumplimiento).
+**Reglas clínicas canónicas:** `protocolo-estado.md` (*Decisión clínica*, *Gramática del patch*, *Eventos*, *Catálogo de regresiones*). No reescribir el árbol aquí; validar cumplimiento.
 
 ---
 
@@ -35,7 +35,7 @@ Usá **un solo** checklist según `interpretacion.clasificacion`:
 | `clasificacion` | Checklist a usar | Ignorar |
 |-----------------|------------------|---------|
 | **correcta** | [Checklist tras correcta](#checklist-tras-correcta) | Reglas de subida `no_ve` / `incorrecta` |
-| **incorrecta**, **no_ve** | [Checklist tras incorrecta / no_ve](#checklist-tras-incorrecta--no_ve) | Post-correcta, anti-patrón “solo contador” |
+| **incorrecta**, **no_ve** | [Checklist tras incorrecta / no_ve](#checklist-tras-incorrecta--no_ve) | Post-correcta, anti-patrones de cierre |
 | **ambigua**, **confianza_baja** | Estructural: `acciones: []`, `repregunta_sin_cambio` | Contadores, logMAR |
 | **continuacion** (bootstrap) | [Inicio del test](#inicio-del-test-modo-bootstrap) | Contadores previos null en arranque |
 
@@ -43,11 +43,13 @@ Usá **un solo** checklist según `interpretacion.clasificacion`:
 
 ## Inicio del test (`modo: bootstrap`)
 
-Validar patch + acciones según *Inicio del test por ojo* en **protocolo-estado.md**:
+Validar patch + acciones contra **Plantilla A** de `prompts/protocolo-agudeza.md` y *Eventos → `inicio_ojo`* en `protocolo-estado.md`:
 
-- `logmarActual: 0.3`, `letraActual: H`, `resultadosPorLogmar` en 0, `letrasUsadas: ["H"]`
+- `agudeza.{ojo}` con `logmarActual: 0.3`, `letraActual: "H"`, `letrasUsadas: ["H"]`
+- `ojoActual` del ojo que inicia
 - `acciones`: foróptero (ojo activo open + RX, contralateral close) + TV H @ 0.3
 - `evento: inicio_ojo`
+- **Contadores no van en el patch** (los inicializa el servidor en memoria).
 
 ---
 
@@ -65,16 +67,24 @@ Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementad
 | **c = 1** y `logmarActual > 0.0` | **Bajar** un paso logMAR, nueva letra, `tv`; `siguiente_optotipo`. |
 | **c = 1** y `logmarActual == 0.0` | Permanecer en 0.0, rotar letra, `tv`. |
 
-### Anti-patrón: solo contador / sin TV (regresión log T3)
+### Anti-patrón: cierre prematuro con `c == 1` (BUG-003, 2026-05-20)
 
 **Rechazar** si:
 
 - Clasificación **correcta**
 - `resultadosPorLogmar[logmarActual].correcto === 1` en el estado (tras registro)
-- `logmarActual > 0.0`
-- `evento: siguiente_optotipo` con `acciones: []` o sin `tv`, **o** patch no baja logMAR
+- `evento: cierre_ojo_R_e_inicio_L` o `examen_finalizado`
 
-**Nota:** si el patch incluye `aciertosPorLogmar` / `resultadosPorLogmar`, rechazá también por “contadores en patch prohibidos”.
+Cierre solo con `c >= 2`. Citar `BUG-003` en `violaciones`.
+
+`correccionSugerida` (resumen):
+
+- Si `logmarActual > 0.0`: Plantilla B (BAJAR) — `agudeza.{ojo}.logmarActual = logmarActual - 0.1`, letra Sloan no usada, `tv` con la nueva letra y logmar, `evento: siguiente_optotipo`.
+- Si `logmarActual == 0.0`: Plantilla B (ROTAR_0) — mantener logmar, rotar letra.
+
+### Anti-patrón: solo contador / sin TV
+
+**Rechazar** si clasificación **correcta** con `c == 1`, `logmarActual > 0.0`, `evento: siguiente_optotipo` y `acciones: []` o sin `tv`, **o** patch no baja logMAR.
 
 ### Anti-patrón: patch vacío en `correcta`
 
@@ -86,7 +96,7 @@ Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementad
 - **c ≥ 2** ojo **L**: `agudeza.L.logmarFinal`, `fase:"finalizado"`, sin `tv`.
 - **c = 1**, logMAR > 0: bajada un paso + `tv` + `siguiente_optotipo` (patch solo bajo `agudeza.{ojoActivo}`).
 - **c = 1**, logMAR = 0: rotar letra + `tv`.
-- **Forma / L mal anidado**: `Fallo: protocolo.` + JSON de AUD-04 o *Ejemplo literal* en `protocolo-estado.md`.
+- **Forma / L mal anidado** (BUG-001): `Fallo: protocolo.` + JSON de AUD-04 o Plantilla D en `prompts/protocolo-agudeza.md`.
 
 ### Anti-patrón: patch parcial en cierre R → L
 
@@ -124,7 +134,7 @@ Violaciones típicas (usar texto fijo):
 | `estadoPatch.L en raíz: debe ser estadoPatch.agudeza.L` |
 | `Falta ojoActual: "L" en cierre R→L` |
 
-`correccionSugerida`: pegar el JSON válido de `fixtures/auditor/AUD-04-correcta-cierre-R.json` o el *Ejemplo literal* en `protocolo-estado.md`, ajustando `logmarFinal` al logMAR de cierre del `estadoAntes`.
+`correccionSugerida`: pegar el JSON válido de `fixtures/auditor/AUD-04-correcta-cierre-R.json` o la **Plantilla D** de `prompts/protocolo-agudeza.md`, ajustando `logmarFinal` al logMAR de cierre del `estadoAntes`. Citar `BUG-001` en `violaciones` para trazabilidad.
 
 ### Anti-patrón: patch parcial sin `agudeza.L` ni `ojoActual`
 
@@ -148,7 +158,7 @@ En el protocolo de agudeza, incorrecta y no_ve implican subida de logMAR (o rota
 ### Prohibido en este turno
 
 - Que el patch **modifique** `resultadosPorLogmar` o `aciertosPorLogmar` (el servidor ya registró `incorrecto` en el logMAR del estímulo).
-- Aplicar checklist post-**correcta** ni anti-patrón “solo contador”.
+- Aplicar checklist post-**correcta** ni anti-patrones de cierre.
 - Auditar `confirmaciones`.
 
 ### Aprobar si

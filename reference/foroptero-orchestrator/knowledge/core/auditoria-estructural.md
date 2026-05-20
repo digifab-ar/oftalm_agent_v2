@@ -82,5 +82,5 @@ Si `modo: bootstrap` en el user: validar contra *Inicio del test* de la fase en 
 En `correccionSugerida`:
 
 - Indicá si el fallo es de **protocolo** o conviene **re-ejecutar intérprete**.
-- Si el fallo es de **forma** o **cierre R→L**: pegá el JSON completo válido (`estadoPatch` + `evento` + `acciones`) como en `fixtures/auditor/AUD-04-correcta-cierre-R.json` o el *Ejemplo literal* en `protocolo-estado.md` — no solo texto narrativo.
+- Si el fallo es de **forma** o **cierre R→L**: pegá el JSON completo válido (`estadoPatch` + `evento` + `acciones`) como en `fixtures/auditor/AUD-04-correcta-cierre-R.json` o la **Plantilla D** de `prompts/protocolo-agudeza.md` — no solo texto narrativo.
 - No redactes mensajes al paciente.

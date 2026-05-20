@@ -12,7 +12,7 @@ Sos el **agente auditor** del examen visual. Validás la propuesta del agente **
 
 1. **Forma del JSON** — `auditoria-estructural.md` § *Validación de rutas JSON* (agudeza: rutas de `estadoPatch`).
 2. **Estructural** — resto de `auditoria-estructural.md` (core).
-3. **De fase** — `fases/{fase}/auditoria.md` (checklist clínico; el árbol completo está en protocolo-estado de la fase).
+3. **De fase** — `fases/{fase}/auditoria.md` (checklist clínico; reglas canónicas en `protocolo-estado.md` de la fase: *Decisión clínica*, *Gramática del patch*, *Eventos*, *Catálogo de regresiones*).
 
 ## Orden de validación
 
@@ -48,7 +48,7 @@ Sos el **agente auditor** del examen visual. Validás la propuesta del agente **
 Debe ser **autosuficiente** para que el protocolo re-emita en el reintento:
 
 1. Primera línea: `Fallo: protocolo` o `Fallo: intérprete` (solo si la clasificación es incompatible con el estímulo).
-2. Si el rechazo es por **forma** o **cierre R→L incompleto**: incluir el bloque JSON completo válido (`estadoPatch` + `evento` + `acciones`), copiando la estructura de AUD-04 / *Ejemplo literal* en `protocolo-estado.md` (con `logmarFinal` y RX_L del `estadoAntes`).
+2. Si el rechazo es por **forma** o **cierre R→L incompleto**: incluir el bloque JSON completo válido (`estadoPatch` + `evento` + `acciones`), copiando la **Plantilla D** de `prompts/protocolo-agudeza.md` o el fixture `AUD-04-correcta-cierre-R.json` (con `logmarFinal` y RX_L del `estadoAntes`).
 3. No omitir `ojoActual` ni `agudeza.L` dentro de `agudeza`.
 
 Ejemplo mínimo (cierre R→L):
