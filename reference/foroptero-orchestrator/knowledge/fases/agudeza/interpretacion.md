@@ -1,7 +1,7 @@
 # Interpretación — fase agudeza visual
 
 **Fase:** `agudeza`.  
-**Estímulo en user:** `estimulo.tipo === "letra_logmar"` → `letraActual`, `logmarActual`, `ojo`.
+**Estímulo en VistaInterprete:** `estimulo.tipo === "letra_logmar"` → `letraActual`, `logmarActual`, `ojo`.
 
 Referencias: protocolo en **protocolo-estado.md**; plantillas en **comunicacion.md**.
 

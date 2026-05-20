@@ -25,12 +25,12 @@ Las instrucciones operativas del agente protocolo viven en `prompts/protocolo-ag
 
 ## Modelo de estado
 
-| Capa | Campos | Quién lee | Quién escribe |
-|------|--------|-----------|---------------|
-| Globales | `fase`, `ojoActual`, `finalizado`, `rx`, `iniciado`, `historial`, `intentosRegistrados` | todos | servidor |
-| `agudeza.{ojo}` operativos | `logmarActual`, `letraActual`, `letrasUsadas`, `logmarFinal` | todos | protocolo (vía patch) |
-| `agudeza.{ojo}` contadores | `resultadosPorLogmar`, `aciertosPorLogmar` | todos | **solo servidor** |
-| Legacy / no usar | `letraFinal`, `confirmaciones`, `ultimoLogmarCorrecto` | nadie | nadie |
+| Capa | Campos | Visible al LLM (vista) | Quién escribe |
+|------|--------|------------------------|---------------|
+| Globales | `fase`, `ojoActual`, `finalizado`, `rx`, `iniciado`, `historial`, `intentosRegistrados` | `fase`, `ojoActual`, `rx` (parcial) / ✗ historial | servidor |
+| `agudeza.{ojo}` operativos | `logmarActual`, `letraActual`, `letrasUsadas`, `logmarFinal` | ✓ | protocolo (vía patch) |
+| `agudeza.{ojo}` contadores | `resultadosPorLogmar`, `aciertosPorLogmar` | ✓ como `contadoresLogmarActual` (solo logMAR activo) | **solo servidor** |
+| Legacy / no usar | `letraFinal`, `confirmaciones`, `ultimoLogmarCorrecto` | ✗ | nadie |
 
 **Derivados:**
 
@@ -205,6 +205,25 @@ Bugs históricos con estado, propuesta inválida y corrección. Citar el ID en `
 - **Mitigación:** *Tabla de decisión* explícita en prompt + regla dura citada debajo + cita del bug en plantilla B.
 - **Propuesta correcta:** Plantilla B (BAJAR) — `agudeza.R.logmarActual: 0.2`, letra Sloan no usada, `tv` @0.2, `evento: "siguiente_optotipo"`.
 - **Fixtures:** pendiente `AUD-11` (rechazo de cierre con `c = 1`).
+
+### BUG-004 — No-cierre con c >= 2 en L (2026-05-20, log turno 7)
+
+- **Componente:** protocolo (y auditor que aprobó).
+- **Estado de entrada:** L con `0.3.correcto: 2`, `ojoActual "L"`, clasificación correcta.
+- **Propuesta inválida:** `siguiente_optotipo` (BAJAR a 0.2) con `razonamientoProtocolo` "c=1 en 0.3".
+- **Efecto:** examen no se cerró; turnos espurios con reutilización de H.
+- **Causa raíz:** el protocolo templó razonamiento desde el historial embebido en el JSON del estado.
+- **Mitigación:** regla dura simétrica en prompt + vista mínima sin historial + caso de regresión documentado en `PLAN_VISTAS_AGENTES.md` §8.3.
+- **Propuesta correcta:** Plantilla E (CIERRE_FINAL).
+
+### BUG-005 — Reutilización de letra Sloan y letrasUsadas encogida (2026-05-20, log turnos 6, 9)
+
+- **Componente:** protocolo (y auditor que aprobó).
+- **Estado de entrada:** L con `letrasUsadas ["H","O"]`.
+- **Propuesta inválida:** `letraActual "H"` con `letrasUsadas ["H"]` (encoge array, reutiliza letra ya usada).
+- **Efecto:** `deepMerge` reemplaza arrays → historial Sloan del ojo se pierde.
+- **Mitigación:** auditor valida `letrasUsadasResultantes` vs `agudeza[ojoActual].letrasUsadas` + caso §8.3 del plan de vistas.
+- **Propuesta correcta:** letra Sloan no usada; `letrasUsadas` debe **extender** el array previo.
 
 ---
 

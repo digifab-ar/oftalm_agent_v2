@@ -1,5 +1,4 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
-import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { COMUNICACION_SCHEMA } from './schemas.js';
 
@@ -9,59 +8,16 @@ const CONTEXTO_VOZ_VALIDOS = new Set([
   'continuar_sin_respuesta'
 ]);
 
-function estadoResumido(estado) {
-  const ojo = estado.ojoActual;
-  const ag = estado.agudeza?.[ojo];
-  return {
-    fase: estado.fase,
-    ojoActual: ojo,
-    R_cerrado: estado.agudeza?.R?.logmarFinal != null,
-    L_cerrado: estado.agudeza?.L?.logmarFinal != null,
-    logmarActual: ag?.logmarActual ?? null,
-    letraActual: ag?.letraActual ?? null
-  };
-}
-
-function construirUser(
-  interpretacion,
-  decisionProtocolo,
-  estado,
-  modo,
-  huboCambioDispositivo
-) {
-  const fase = resolverFaseDesdeEstado(estado);
-  const partes = ['## Fase activa', `fase: ${fase}`];
-
-  if (modo) {
-    partes.push('## Modo del turno', `modo: ${modo}`);
-  }
-
-  partes.push(
-    '## Interpretación',
+function construirUser(vista) {
+  return [
+    '## Vista del turno (VistaComunicacion)',
+    'Usá los flags pre-computados para `contextoVoz` (tabla en comunicacion-comun.md).',
+    '**No** derivar `contextoVoz` del `evento` ni de razonamientos previos.',
     '```json',
-    JSON.stringify(interpretacion, null, 2),
-    '```',
-    '## Decisión de protocolo',
-    '```json',
-    JSON.stringify(
-      {
-        evento: decisionProtocolo.evento,
-        detalleEvento: decisionProtocolo.detalleEvento
-      },
-      null,
-      2
-    ),
-    '```',
-    '## Cambio de dispositivos en este turno',
-    `huboCambioDispositivo: ${Boolean(huboCambioDispositivo)}`,
-    '## Estado resumido',
-    '```json',
-    JSON.stringify(estadoResumido(estado), null, 2),
+    JSON.stringify(vista, null, 2),
     '```',
     'Redactá mensajes y devolvé el JSON del schema.'
-  );
-
-  return partes.join('\n\n');
+  ].join('\n\n');
 }
 
 export function normalizarComunicacion(parsed) {
@@ -83,23 +39,11 @@ export function normalizarComunicacion(parsed) {
   };
 }
 
-export async function ejecutarComunicacion(
-  interpretacion,
-  decisionProtocolo,
-  estado,
-  options = {}
-) {
-  const { modo, huboCambioDispositivo = false } = options;
-  const fase = resolverFaseDesdeEstado(estado);
+export async function ejecutarComunicacion(vista, options = {}) {
+  const fase = vista.fase ?? 'agudeza';
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('comunicacion', fase),
-    user: construirUser(
-      interpretacion,
-      decisionProtocolo,
-      estado,
-      modo,
-      huboCambioDispositivo
-    ),
+    user: construirUser(vista),
     schema: COMUNICACION_SCHEMA,
     schemaName: 'agente_comunicacion',
     agente: 'comunicacion'

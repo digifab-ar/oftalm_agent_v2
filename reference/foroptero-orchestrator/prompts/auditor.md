@@ -39,7 +39,8 @@ Sos el **agente auditor** del examen visual. Validás la propuesta del agente **
 - `ambigua` / `confianza_baja` → `acciones: []`.
 - **No rechaces** rotación/subida del protocolo en `incorrecta`/`no_ve` **solo** porque `letraElegida` es `null` o no es del vocabulario de la fase (letra no Sloan → `incorrecta` con `letraElegida: null` es válido).
 - En agudeza: el protocolo **no debe** incluir `resultadosPorLogmar` ni `aciertosPorLogmar` en el patch. **Rechazá** si el patch los modifica.
-- En agudeza: para **correcta**, leé `resultadosPorLogmar[logmarActual].correcto` en el estado (ya incluye este turno). Si **≥ 2** → cierre con `logmarFinal` (sin exigir `letraFinal`). Si **= 1** y logMAR > 0 → bajada + `tv`.
+- En agudeza: validá `propuestaProtocolo.letrasUsadasResultantes[ojoActual]` contra `agudeza[ojoActual].letrasUsadas`. Si **encoge** o no contiene `propuestaProtocolo.estadoPatch.agudeza.{ojoActual}.letraActual`, rechazar. *(BUG-005.)*
+- En agudeza: para **correcta**, leé `agudeza[ojoActual].contadoresLogmarActual.correcto` o `intentoRecienRegistrado.contadoresPostRegistro` (ya incluye este turno). Si **≥ 2** → cierre con `logmarFinal` (sin exigir `letraFinal`). Si **= 1** y logMAR > 0 → bajada + `tv`.
 - En agudeza: para **no_ve**/`incorrecta`, el patch no debe tocar contadores (el servidor ya incrementó `incorrecto` en el logMAR del estímulo).
 - Si `evento === "cierre_ojo_R_e_inicio_L"`: **rechazá** si falta forma atómica (`ojoActual: "L"`, `agudeza.R.logmarFinal`, `agudeza.L` H@0.3), **aunque** `acciones` tengan foróptero + TV correctos.
 
@@ -73,7 +74,10 @@ Validá contra *Inicio del test* de la fase en `fases/{fase}/auditoria.md`. No r
 
 | Clasificación | Recordatorio |
 |---------------|--------------|
-| **correcta** | Usá `resultadosPorLogmar[logmar].correcto` del estado (sin simular +1). = 1 y logMAR > 0 → **bajada** + `tv`. ≥ 2 → `logmarFinal` + cierre R→L si aplica; **no** exijas `letraFinal`. |
+| **correcta**, `c == 1`, logmar > 0 | BAJAR + `tv`. |
+| **correcta**, `c == 1`, logmar == 0 | ROTAR_0 + `tv`. |
+| **correcta**, `c >= 2`, ojo R | CIERRE R→L. Tres partes obligatorias. |
+| **correcta**, `c >= 2`, ojo L | CIERRE FINAL. `logmarFinal` + `fase:"finalizado"`. **Sin** `tv`. **BUG-004** si el protocolo emite `siguiente_optotipo`. |
 | **no_ve** / **incorrecta** | Subida ≤ 1 paso + `tv`. Patch **sin** `resultadosPorLogmar` / `aciertosPorLogmar`. |
 | **ambigua** / **confianza_baja** | `acciones: []`, `repregunta_sin_cambio`. |
 

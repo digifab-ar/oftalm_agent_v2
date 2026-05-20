@@ -1,0 +1,67 @@
+# Contratos de vistas por agente
+
+**Alcance:** shapes que el servidor proyecta antes de invocar a cada agente LLM. Implementación: `lib/vistasAgentes.js`, schemas en `agents/schemas.js`.
+
+---
+
+## Principios
+
+- **Regla del menor contexto:** cada agente recibe el subconjunto mínimo necesario para su salida.
+- **Vista por agente:** no se reutiliza el estado completo entre agentes.
+- **Pre-computación obligatoria:** contadores (`contadoresLogmarActual`), flags de comunicación, `letrasUsadasResultantes`.
+- **El historial nunca se serializa al LLM.** Vive server-side para auditoría y CSV.
+- **Vocabulario de ojos:** solo `R` y `L` literales; `ojoActual` indica el operativo.
+
+---
+
+## VistaInterprete
+
+Campos: `fase`, `modo`, `estimulo` (`tipo`, `letraActual`, `logmarActual`, `ojo`), `respuestaPaciente`, `confianza`.
+
+Derivación: `estimulo` desde `estimuloParaInterprete(estado)`. Bootstrap no invoca LLM.
+
+---
+
+## VistaProtocolo
+
+Campos: `fase`, `modo`, `ojoActual`, `agudeza.{R|L}` (operativos + `contadoresLogmarActual`), `rx`, `interpretacion`, `feedbackAuditor` (null o `{ violaciones, correccionSugerida }` en reintento).
+
+`contadoresLogmarActual`: extraído de `resultadosPorLogmar[String(logmarActual)]` del ojo; `null` si `logmarActual == null`.
+
+**Excluido:** `historial`, `intentosRegistrados`, `resultadosPorLogmar` completo, legacy.
+
+---
+
+## VistaAuditor
+
+Igual que VistaProtocolo + `intentoRecienRegistrado` (solo `modo: respuesta`) + `propuestaProtocolo` con `letrasUsadasResultantes` (post-`deepMerge` simulado).
+
+---
+
+## VistaComunicacion
+
+Campos: `fase`, `modo`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuatro flags booleanos, `interpretacion` (resumida), `estadoResumido`.
+
+| Flag | Derivación |
+|------|------------|
+| `esPrimerTurnoExamen` | `historial.length === 0` |
+| `esCambioDeOjo` | `estadoAntes.ojoActual !== patch.ojoActual` y patch define `ojoActual` |
+| `esPrimerTurnoOjoActivo` | `estadoAntes.agudeza[ojoPostPatch].letraActual == null` |
+| `esExamenFinalizado` | `patch.fase === "finalizado"` o `evento === "examen_finalizado"` |
+
+**Tabla `contextoVoz`:** ver `comunicacion-comun.md`.
+
+---
+
+## Trazabilidad
+
+- `estadoExamen` completo en memoria con `historial`.
+- `registrarTurnoHistorial`, `generarRegistroCsv`, `/api/examen/detalle` usan estado completo, no vistas.
+- Introspección/debug: `snapshotEstadoExamen()` (no usar en `agents/`).
+
+---
+
+## Anti-tentación
+
+- Sin alias `ojoActivo` / `ojoContrario`.
+- Sin pre-computar la rama clínica (eso sería “camino 3”, fuera de este plan).

@@ -8,7 +8,7 @@
 ## Fuente de verdad
 
 - Auditá contra el JSON del user (**estado tras registro del intento** en servidor). Los contadores ya incluyen este turno.
-- Leé `resultadosPorLogmar[logmar].correcto` / `.incorrecto` — **no** simules +1.
+- Leé `agudeza[ojoActual].contadoresLogmarActual` o `intentoRecienRegistrado.contadoresPostRegistro` — **no** simules +1.
 - Si citás valores en `violaciones`, deben coincidir **literalmente** con el JSON.
 - **Antes** del checklist clínico: validá la **forma** del `estadoPatch` según `auditoria-estructural.md` § *Validación de rutas JSON* y *Gramática del patch* en `protocolo-estado.md`.
 
@@ -57,13 +57,14 @@ Validar patch + acciones contra **Plantilla A** de `prompts/protocolo-agudeza.md
 
 **Solo** si `interpretacion.clasificacion === "correcta"`.
 
-Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementado por el servidor).
+Leé `c = agudeza[ojoActual].contadoresLogmarActual.correcto` del estado (ya incrementado por el servidor).
 
 **Selección de fila (obligatoria).** Una sola fila según `c`. No mezclar violaciones de ramas distintas.
 
 | Condición (`c` = correctos en logMAR del estímulo) | Debe cumplirse |
 |------------------------------------------------------|----------------|
-| **c ≥ 2** | `logmarFinal` en ese ojo (**sin** exigir `letraFinal`); **sin** `tv` para seguir en ese ojo. Ojo **R** → `cierre_ojo_R_e_inicio_L` + foróptero + TV H@0.3 L en el **mismo** turno. |
+| **c ≥ 2**, ojo **R** | `logmarFinal` en R; `cierre_ojo_R_e_inicio_L` + foróptero + TV H@0.3 L en el **mismo** turno. |
+| **c ≥ 2**, ojo **L** | `logmarFinal` en L + `fase:"finalizado"`; **sin** `tv`. Rechazar `siguiente_optotipo` (**BUG-004**). |
 | **c = 1** y `logmarActual > 0.0` | **Bajar** un paso logMAR, nueva letra, `tv`; `siguiente_optotipo`. |
 | **c = 1** y `logmarActual == 0.0` | Permanecer en 0.0, rotar letra, `tv`. |
 
@@ -76,6 +77,26 @@ Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementad
 - `evento: cierre_ojo_R_e_inicio_L` o `examen_finalizado`
 
 Cierre solo con `c >= 2`. Citar `BUG-003` en `violaciones`.
+
+### Anti-patrón: no-cierre con `c >= 2` (BUG-004, 2026-05-20)
+
+**Rechazar** si:
+
+- Clasificación **correcta**
+- `agudeza[ojoActual].contadoresLogmarActual.correcto >= 2` (o `intentoRecienRegistrado.contadoresPostRegistro.correcto >= 2`)
+- `evento: siguiente_optotipo` (BAJAR/rotar en vez de cerrar)
+- Ojo **L** sin `examen_finalizado` / sin `logmarFinal`
+
+Citar **BUG-004** y el valor literal del contador en `violaciones`.
+
+### Anti-patrón: letra reutilizada / `letrasUsadas` encogida (BUG-005, 2026-05-20)
+
+**Rechazar** si:
+
+- `propuestaProtocolo.letrasUsadasResultantes[ojoActual]` es más corto que `agudeza[ojoActual].letrasUsadas`, o
+- La `letraActual` del patch ya estaba en `letrasUsadas` pre-patch y el array resultante no la **extiende** correctamente.
+
+Citar **BUG-005** en `violaciones`.
 
 `correccionSugerida` (resumen):
 

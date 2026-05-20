@@ -27,6 +27,7 @@ Aplica si `estadoPatch` no es `{}`. Validá **rutas literales** en `propuestaPro
 | `evento: cierre_ojo_R_e_inicio_L` | Falta `estadoPatch.ojoActual === "L"` **o** falta `estadoPatch.agudeza.L` con `logmarActual`, `letraActual`, `letrasUsadas` **o** falta `estadoPatch.agudeza.R.logmarFinal` |
 | `evento: inicio_ojo` (bootstrap) | Falta `estadoPatch.ojoActual` o falta `estadoPatch.agudeza.{ojo}` del ojo que inicia con estímulo H@0.3 |
 | Coherencia puntero | El patch inicializa `agudeza.L` (estímulo) y `evento` es `cierre_ojo_R_e_inicio_L`, pero `ojoActual` no es `"L"` |
+| `letrasUsadasResultantes` | Rechazar si `propuestaProtocolo.letrasUsadasResultantes[ojoActual]` no extiende `agudeza[ojoActual].letrasUsadas` (encoge el array o no incluye `letraActual` propuesta). Citar **BUG-005**. |
 
 **No aprobar** `cierre_ojo_R_e_inicio_L` solo porque `acciones` incluyen foróptero + TV H@0.3: el patch debe cumplir la tabla de *Gramática del patch* en `protocolo-estado.md`.
 
@@ -58,7 +59,7 @@ Mensajes sugeridos en `violaciones` (texto fijo cuando aplique):
 ## Fuente de verdad del estado (anclaje al JSON)
 
 - Validá contra el JSON literal del user (en agudeza: **estado tras registro del intento**). **No infieras** desde historial ni razonamiento del protocolo.
-- Si citás contadores, usá `resultadosPorLogmar` del JSON; deben coincidir **literalmente** (ya incluyen este turno en agudeza).
+- Si citás contadores en agudeza, usá `agudeza[ojoActual].contadoresLogmarActual` o `intentoRecienRegistrado.contadoresPostRegistro` del JSON; deben coincidir **literalmente** (ya incluyen este turno).
 - Una violación que cita un estado distinto al JSON real es por sí misma incoherente y debe corregirse antes de emitir la respuesta.
 
 ---

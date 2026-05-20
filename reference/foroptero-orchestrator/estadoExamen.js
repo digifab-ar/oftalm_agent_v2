@@ -95,13 +95,21 @@ export function obtenerDetalleExamen() {
   };
 }
 
-export function obtenerEstadoParaOrquestador() {
+/**
+ * Snapshot completo del examen (incluye `historial`).
+ * Uso solo introspección / debug / endpoints; **no** consumir desde `agents/` ni serializar al LLM.
+ * El pipeline proyecta vistas mínimas vía `lib/vistasAgentes.js`.
+ */
+export function snapshotEstadoExamen() {
   if (!estadoExamen) return null;
   for (const ojo of ['R', 'L']) {
     asegurarResultadosPorLogmarEnOjo(estadoExamen.agudeza[ojo]);
   }
   return JSON.parse(JSON.stringify(estadoExamen));
 }
+
+/** @deprecated Usar `snapshotEstadoExamen`. */
+export const obtenerEstadoParaOrquestador = snapshotEstadoExamen;
 
 /**
  * Registra el intento del turno en `resultadosPorLogmar` (determinista, idempotente).

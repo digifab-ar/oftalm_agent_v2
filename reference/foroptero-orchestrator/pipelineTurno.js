@@ -1,10 +1,16 @@
 import {
   aplicarEstadoPatch,
-  obtenerEstadoParaOrquestador,
+  snapshotEstadoExamen,
   registrarIntentoAgudeza,
   registrarTurnoHistorial
 } from './estadoExamen.js';
 import { ejecutarAcciones } from './ejecutarAcciones.js';
+import {
+  armarVistaInterprete,
+  armarVistaProtocolo,
+  armarVistaAuditor,
+  armarVistaComunicacion
+} from './lib/vistasAgentes.js';
 import { ejecutarInterprete } from './agents/interprete.js';
 import { ejecutarProtocolo } from './agents/protocolo.js';
 import { ejecutarAuditor } from './agents/auditor.js';
@@ -145,23 +151,32 @@ function fallbackBootstrap() {
   };
 }
 
-async function protocoloConAuditoria(estadoAntes, interpretacion, modo) {
-  let feedback = null;
+async function protocoloConAuditoria(
+  estadoTrasRegistro,
+  interpretacion,
+  modo,
+  registroIntento
+) {
+  let feedbackAuditor = null;
   const opciones = { modo };
 
   for (let intento = 0; intento <= MAX_REINTENTOS_PROTOCOLO; intento++) {
-    const propuesta = await ejecutarProtocolo(
-      estadoAntes,
+    const vistaProtocolo = armarVistaProtocolo(
+      estadoTrasRegistro,
       interpretacion,
-      feedback,
-      opciones
+      modo,
+      feedbackAuditor
     );
-    const auditoria = await ejecutarAuditor(
-      estadoAntes,
+    const propuesta = await ejecutarProtocolo(vistaProtocolo, opciones);
+
+    const vistaAuditor = armarVistaAuditor(
+      estadoTrasRegistro,
       interpretacion,
       propuesta,
-      opciones
+      modo,
+      registroIntento
     );
+    const auditoria = await ejecutarAuditor(vistaAuditor, opciones);
 
     if (auditoria.aprobado) {
       return { propuesta, auditoria, reintentos: intento };
@@ -171,15 +186,10 @@ async function protocoloConAuditoria(estadoAntes, interpretacion, modo) {
       return { propuesta, auditoria, reintentos: intento, falloAuditor: true };
     }
 
-    feedback = [
-      'Violaciones:',
-      ...auditoria.violaciones.map((v) => `- ${v}`),
-      auditoria.correccionSugerida
-        ? `Sugerencia: ${auditoria.correccionSugerida}`
-        : ''
-    ]
-      .filter(Boolean)
-      .join('\n');
+    feedbackAuditor = {
+      violaciones: auditoria.violaciones,
+      correccionSugerida: auditoria.correccionSugerida
+    };
   }
 
   return null;
@@ -193,7 +203,7 @@ export async function procesarTurnoPipeline(
   confianza = 1,
   options = {}
 ) {
-  const estadoAntes = obtenerEstadoParaOrquestador();
+  const estadoAntes = snapshotEstadoExamen();
   if (!estadoAntes) {
     return { ok: false, error: 'Examen no iniciado' };
   }
@@ -225,12 +235,13 @@ export async function procesarTurnoPipeline(
     if (modo === 'bootstrap') {
       traza.interpretacion = interpretacionBootstrap();
     } else {
-      traza.interpretacion = await ejecutarInterprete(
+      const vistaInterprete = armarVistaInterprete(
         estadoAntes,
         respuestaPaciente,
         conf,
-        { modo }
+        modo
       );
+      traza.interpretacion = await ejecutarInterprete(vistaInterprete, { modo });
     }
 
     if (modo === 'respuesta') {
@@ -249,12 +260,13 @@ export async function procesarTurnoPipeline(
       }
     }
 
-    const estadoTrasRegistro = obtenerEstadoParaOrquestador();
+    const estadoTrasRegistro = snapshotEstadoExamen();
 
     const resultadoProtocolo = await protocoloConAuditoria(
       estadoTrasRegistro,
       traza.interpretacion,
-      modo
+      modo,
+      traza.registroIntento
     );
 
     if (!resultadoProtocolo) {
@@ -287,12 +299,15 @@ export async function procesarTurnoPipeline(
       huboCambioDispositivo =
         Array.isArray(propuestaAplicar.acciones) &&
         propuestaAplicar.acciones.length > 0;
-      comunicacion = await ejecutarComunicacion(
-        traza.interpretacion,
-        propuestaAplicar,
+      const vistaComunicacion = armarVistaComunicacion({
+        interpretacion: traza.interpretacion,
+        propuestaProtocolo: propuestaAplicar,
         estadoTrasRegistro,
-        { modo, huboCambioDispositivo }
-      );
+        estadoAntes,
+        modo,
+        huboCambioDispositivo
+      });
+      comunicacion = await ejecutarComunicacion(vistaComunicacion, { modo });
     }
 
     traza.comunicacion = comunicacion;

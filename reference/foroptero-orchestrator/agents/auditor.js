@@ -1,34 +1,18 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
-import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { AUDITOR_SCHEMA } from './schemas.js';
 
-function construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo) {
-  const fase = resolverFaseDesdeEstado(estadoAntes);
-  const partes = ['## Fase activa', `fase: ${fase}`];
-
-  if (modo) {
-    partes.push('## Modo del turno', `modo: ${modo}`);
-  }
-
-  partes.push(
-    '## Estado tras registro del intento (antes de aplicar patch del protocolo)',
-    'Los contadores en `resultadosPorLogmar` ya reflejan este turno. El protocolo **no debe** modificarlos en el patch.',
+function construirUser(vista) {
+  return [
+    '## Vista del turno (VistaAuditor)',
+    'El estado clínico está en la vista; **no** hay historial ni razonamientos de turnos previos.',
+    'Validá `propuestaProtocolo.letrasUsadasResultantes[ojoActual]` contra `agudeza[ojoActual].letrasUsadas`.',
+    'Para correcta, citá `intentoRecienRegistrado.contadoresPostRegistro` o `agudeza[ojoActual].contadoresLogmarActual`.',
     '```json',
-    JSON.stringify(estadoAntes, null, 2),
-    '```',
-    '## Interpretación',
-    '```json',
-    JSON.stringify(interpretacion, null, 2),
-    '```',
-    '## Propuesta del agente protocolo',
-    '```json',
-    JSON.stringify(propuestaProtocolo, null, 2),
+    JSON.stringify(vista, null, 2),
     '```',
     'Auditá y devolvé el JSON del schema.'
-  );
-
-  return partes.join('\n\n');
+  ].join('\n\n');
 }
 
 export function normalizarAuditoria(parsed) {
@@ -39,17 +23,11 @@ export function normalizarAuditoria(parsed) {
   };
 }
 
-export async function ejecutarAuditor(
-  estadoAntes,
-  interpretacion,
-  propuestaProtocolo,
-  options = {}
-) {
-  const { modo } = options;
-  const fase = resolverFaseDesdeEstado(estadoAntes);
+export async function ejecutarAuditor(vista, options = {}) {
+  const fase = vista.fase ?? 'agudeza';
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('auditor', fase),
-    user: construirUser(estadoAntes, interpretacion, propuestaProtocolo, modo),
+    user: construirUser(vista),
     schema: AUDITOR_SCHEMA,
     schemaName: 'agente_auditor',
     agente: 'auditor'

@@ -13,15 +13,19 @@
 
 ---
 
-## `contextoVoz`
+## `contextoVoz` (tabla canónica desde flags)
 
-| Valor | Cuándo |
-|-------|--------|
-| **inicio** | Primer turno tras inicializar examen o fase. |
-| **esperar_respuesta** | Preguntaste algo al paciente; necesitás respuesta. |
-| **continuar_sin_respuesta** | Solo informativo **sin** cambio de dispositivos/ojo en ese turno. |
+El user entrega **VistaComunicacion** con flags pre-computados. Elegí `contextoVoz` **solo** según esta tabla:
 
-**Prohibido** `continuar_sin_respuesta` si el protocolo cambió ojo, estímulo, cerró un bloque o debió enviarse MQTT (`huboCambioDispositivo: true` en el user).
+| Condición (flag en la vista) | `contextoVoz` |
+|------------------------------|----------------|
+| `esPrimerTurnoExamen` **o** `esCambioDeOjo` | `inicio` |
+| `esExamenFinalizado` | `continuar_sin_respuesta` |
+| Resto (hay pregunta al paciente) | `esperar_respuesta` |
+
+**No** inferir `inicio` por “cambio de dispositivo” ni por analogía con el `evento`.
+
+**Prohibido** `continuar_sin_respuesta` si `huboCambioDispositivo: true` (salvo `esExamenFinalizado`).
 
 ---
 

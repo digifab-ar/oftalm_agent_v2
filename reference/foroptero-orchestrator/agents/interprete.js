@@ -1,5 +1,5 @@
 import { cargarSystemAgente } from '../lib/knowledge.js';
-import { estimuloParaInterprete, resolverFaseDesdeEstado } from '../lib/estimulo.js';
+import { resolverFaseDesdeEstado } from '../lib/estimulo.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { INTERPRETE_SCHEMA } from './schemas.js';
 
@@ -41,34 +41,23 @@ export function corregirInterpretacionAgudeza(parsed) {
   };
 }
 
-function construirUser(estado, respuestaPaciente, confianza, modo) {
-  const fase = resolverFaseDesdeEstado(estado);
+function construirUser(vista) {
   const partes = [
-    '## Fase activa',
-    `fase: ${fase}`,
-    '## Estímulo de referencia',
+    '## Vista del turno (VistaInterprete)',
     '```json',
-    JSON.stringify(estimuloParaInterprete(estado), null, 2),
+    JSON.stringify(vista, null, 2),
     '```'
   ];
 
-  if (modo) {
-    partes.push('## Modo del turno', `modo: ${modo}`);
-  }
-
-  if (
-    respuestaPaciente != null &&
-    String(respuestaPaciente).trim() !== ''
-  ) {
-    partes.push(
-      '## Respuesta del paciente (transcripción literal)',
-      String(respuestaPaciente).trim(),
-      `## Confianza de captura (0-1): ${confianza}`
-    );
-  } else {
+  if (vista.respuestaPaciente == null) {
     partes.push(
       '## Sin respuesta del paciente en este turno',
       'Devolvé clasificacion: continuacion.'
+    );
+  } else {
+    partes.push(
+      '## Confianza de captura (0-1)',
+      String(vista.confianza)
     );
   }
 
@@ -100,21 +89,16 @@ export function normalizarInterpretacion(parsed, fase = null) {
   return base;
 }
 
-export async function ejecutarInterprete(
-  estado,
-  respuestaPaciente,
-  confianza,
-  options = {}
-) {
+export async function ejecutarInterprete(vista, options = {}) {
   const { modo } = options;
   if (modo === 'bootstrap') {
     return interpretacionBootstrapHardcoded();
   }
 
-  const fase = resolverFaseDesdeEstado(estado);
+  const fase = vista.fase ?? resolverFaseDesdeEstado({ fase: vista.fase });
   const parsed = await llamarAgenteJson({
     system: cargarSystemAgente('interprete', fase),
-    user: construirUser(estado, respuestaPaciente, confianza, modo),
+    user: construirUser(vista),
     schema: INTERPRETE_SCHEMA,
     schemaName: 'agente_interprete',
     agente: 'interprete'
