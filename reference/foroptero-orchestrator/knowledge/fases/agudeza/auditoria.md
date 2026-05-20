@@ -10,6 +10,7 @@
 - Auditá contra el JSON del user (**estado tras registro del intento** en servidor). Los contadores ya incluyen este turno.
 - Leé `resultadosPorLogmar[logmar].correcto` / `.incorrecto` — **no** simules +1.
 - Si citás valores en `violaciones`, deben coincidir **literalmente** con el JSON.
+- **Antes** del checklist clínico: validá la **forma** del `estadoPatch` según `auditoria-estructural.md` § *Validación de rutas JSON* y *Gramática del patch* en `protocolo-estado.md`.
 
 ---
 
@@ -79,12 +80,13 @@ Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementad
 
 **Rechazar** si clasificación **correcta** y `estadoPatch: {}` y/o `acciones: []` sin lógica de cierre válida.
 
-`correccionSugerida` según `c = resultadosPorLogmar[logmarActual].correcto` del estado (**sin** simular +1):
+`correccionSugerida` según `c = resultadosPorLogmar[logmarActual].correcto` del estado (**sin** simular +1). Si rechazás por forma o cierre, **pegá el JSON completo** (no solo viñetas):
 
-- **c ≥ 2** ojo **R**: `logmarFinal` en R, patch L (`logmarActual:0.3`, `letraActual:"H"`, `letrasUsadas:["H"]`), `ojoActual:"L"`, foróptero + TV H@0.3, `cierre_ojo_R_e_inicio_L` — **sin** contadores ni `letraFinal` en patch.
-- **c ≥ 2** ojo **L**: `logmarFinal` en L, `fase:"finalizado"`, sin `tv`.
-- **c = 1**, logMAR > 0: bajada un paso + `tv` + `siguiente_optotipo`.
+- **c ≥ 2** ojo **R**: bloque completo con `estadoPatch.ojoActual:"L"`, `estadoPatch.agudeza.R.logmarFinal`, `estadoPatch.agudeza.L` (H@0.3), `evento:"cierre_ojo_R_e_inicio_L"`, `acciones` foróptero + TV — ver AUD-04. **Sin** contadores ni `letraFinal` en patch.
+- **c ≥ 2** ojo **L**: `agudeza.L.logmarFinal`, `fase:"finalizado"`, sin `tv`.
+- **c = 1**, logMAR > 0: bajada un paso + `tv` + `siguiente_optotipo` (patch solo bajo `agudeza.{ojoActivo}`).
 - **c = 1**, logMAR = 0: rotar letra + `tv`.
+- **Forma / L mal anidado**: `Fallo: protocolo.` + JSON de AUD-04 o *Ejemplo literal* en `protocolo-estado.md`.
 
 ### Anti-patrón: patch parcial en cierre R → L
 
@@ -92,17 +94,48 @@ Leé `c = resultadosPorLogmar[logmarActual].correcto` del estado (ya incrementad
 
 - `agudeza.R.logmarFinal`
 - `agudeza.L` con `logmarActual:0.3`, `letraActual:"H"`, `letrasUsadas:["H"]`
+- `ojoActual: "L"`
 - `evento: "cierre_ojo_R_e_inicio_L"`
 - `acciones`: foróptero (R close, L open + RX_L) + TV H@0.3
+
+**No aprobar** si las `acciones` MQTT son correctas pero el patch no cumple la lista anterior.
+
+### Anti-patrón: `L` mal anidado (regresión log 2026-05-19, turno 5)
+
+**Rechazar** si `evento === "cierre_ojo_R_e_inicio_L"` y el patch tiene `estadoPatch.L` en la **raíz** (hermano de `agudeza`) en lugar de `estadoPatch.agudeza.L`.
+
+**Ejemplo inválido (clínica OK, forma NO):**
+
+```json
+{
+  "estadoPatch": {
+    "agudeza": { "R": { "logmarFinal": 0.2 } },
+    "L": { "logmarActual": 0.3, "letraActual": "H", "letrasUsadas": ["H"] }
+  },
+  "evento": "cierre_ojo_R_e_inicio_L",
+  "acciones": [ "foroptero R close / L open", "tv H@0.3" ]
+}
+```
+
+Violaciones típicas (usar texto fijo):
+
+| Violación |
+|-----------|
+| `estadoPatch.L en raíz: debe ser estadoPatch.agudeza.L` |
+| `Falta ojoActual: "L" en cierre R→L` |
+
+`correccionSugerida`: pegar el JSON válido de `fixtures/auditor/AUD-04-correcta-cierre-R.json` o el *Ejemplo literal* en `protocolo-estado.md`, ajustando `logmarFinal` al logMAR de cierre del `estadoAntes`.
+
+### Anti-patrón: patch parcial sin `agudeza.L` ni `ojoActual`
 
 **Ejemplo inválido:**
 
 ```text
 estado (tras registro): 0.2.correcto = 2
-propuesta: { ojoActual:"L", agudeza:{ R:{ aciertosPorLogmar:{...} } }, acciones:[], evento:"siguiente_optotipo" }
+propuesta: { ojoActual:"L", agudeza:{ R:{ logmarFinal:0.2 } }, acciones:[], evento:"siguiente_optotipo" }
 ```
 
-Violaciones: falta `logmarFinal`; falta bloque L; evento/acciones incorrectos; contadores en patch prohibidos.
+Violaciones: falta `agudeza.L`; evento/acciones incorrectos; posible falta de foróptero + TV.
 
 ---
 
@@ -164,7 +197,7 @@ En el protocolo de agudeza, incorrecta y no_ve implican subida de logMAR (o rota
 
 **Rechazar** — patch con `resultadosPorLogmar` / `aciertosPorLogmar` que alteren valores.
 
-Fixtures: `fixtures/auditor/AUD-01.json`, `AUD-02.json`, `AUD-07.json`.
+Fixtures: `fixtures/auditor/AUD-01.json`, `AUD-02.json`, `AUD-04-correcta-cierre-R.json` (cierre válido), `AUD-07.json`. Regresión cambio de ojo: rechazar propuesta con `estadoPatch.L` en raíz (ver § Anti-patrón L mal anidado).
 
 ---
 

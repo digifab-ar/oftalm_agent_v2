@@ -7,8 +7,37 @@
 
 ## Capas de validación
 
-1. **Estructural** (este archivo): coherencia intérprete ↔ protocolo ↔ acciones.
-2. **De fase** (`fases/{fase}/auditoria.md`): contadores, cierres, logMAR, etc.
+1. **Forma del JSON** (este archivo, § Rutas): rutas de `estadoPatch` en agudeza — **antes** del checklist clínico.
+2. **Estructural** (este archivo): coherencia intérprete ↔ protocolo ↔ acciones.
+3. **De fase** (`fases/{fase}/auditoria.md`): contadores, cierres, logMAR, etc.
+
+**Orden obligatorio del auditor:** forma → estructural → fase.
+
+---
+
+## Validación de rutas JSON (`estadoPatch`, fase agudeza)
+
+Aplica si `estadoPatch` no es `{}`. Validá **rutas literales** en `propuestaProtocolo.estadoPatch`; no infieras desde `razonamientoProtocolo` ni desde que las `acciones` MQTT sean correctas.
+
+| Regla | Rechazar (`aprobado: false`) si |
+|-------|----------------------------------|
+| Ojos en raíz del patch | Existe `estadoPatch.R` o `estadoPatch.L` (fuera de `estadoPatch.agudeza`) |
+| Claves sueltas prohibidas | En `estadoPatch` hay claves distintas de `fase`, `ojoActual`, `finalizado`, `agudeza` |
+| Contadores en patch | Cualquier nivel incluye `resultadosPorLogmar` o `aciertosPorLogmar` |
+| `evento: cierre_ojo_R_e_inicio_L` | Falta `estadoPatch.ojoActual === "L"` **o** falta `estadoPatch.agudeza.L` con `logmarActual`, `letraActual`, `letrasUsadas` **o** falta `estadoPatch.agudeza.R.logmarFinal` |
+| `evento: inicio_ojo` (bootstrap) | Falta `estadoPatch.ojoActual` o falta `estadoPatch.agudeza.{ojo}` del ojo que inicia con estímulo H@0.3 |
+| Coherencia puntero | El patch inicializa `agudeza.L` (estímulo) y `evento` es `cierre_ojo_R_e_inicio_L`, pero `ojoActual` no es `"L"` |
+
+**No aprobar** `cierre_ojo_R_e_inicio_L` solo porque `acciones` incluyen foróptero + TV H@0.3: el patch debe cumplir la tabla de *Gramática del patch* en `protocolo-estado.md`.
+
+Mensajes sugeridos en `violaciones` (texto fijo cuando aplique):
+
+- `estadoPatch.L en raíz: debe ser estadoPatch.agudeza.L`
+- `estadoPatch.R en raíz: debe ser estadoPatch.agudeza.R`
+- `Falta ojoActual: "L" en cierre R→L`
+- `Falta agudeza.L (logmarActual, letraActual, letrasUsadas) en cierre R→L`
+- `Falta agudeza.R.logmarFinal en cierre R→L`
+- `Patch incluye resultadosPorLogmar o aciertosPorLogmar (prohibido)`
 
 ---
 
@@ -50,4 +79,8 @@ Si `modo: bootstrap` en el user: validar contra *Inicio del test* de la fase en 
 }
 ```
 
-En `correccionSugerida`, indicá si el fallo es de **protocolo** o conviene **re-ejecutar intérprete**. No redactes mensajes al paciente.
+En `correccionSugerida`:
+
+- Indicá si el fallo es de **protocolo** o conviene **re-ejecutar intérprete**.
+- Si el fallo es de **forma** o **cierre R→L**: pegá el JSON completo válido (`estadoPatch` + `evento` + `acciones`) como en `fixtures/auditor/AUD-04-correcta-cierre-R.json` o el *Ejemplo literal* en `protocolo-estado.md` — no solo texto narrativo.
+- No redactes mensajes al paciente.

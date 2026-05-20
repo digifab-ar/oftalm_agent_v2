@@ -49,6 +49,30 @@ Globales: `fase`, `ojoActual`, `finalizado`.
 
 ---
 
+## Gramática del patch (protocolo y auditor)
+
+Tabla compartida: el protocolo **emite** esta forma; el auditor **rechaza** si no se cumple. Referencia única para rutas JSON.
+
+| `evento` | Campos obligatorios en `estadoPatch` | `ojoActual` en patch |
+|----------|--------------------------------------|----------------------|
+| `inicio_ojo` (bootstrap) | `agudeza.{ojo}` con `logmarActual: 0.3`, `letraActual: "H"`, `letrasUsadas: ["H"]` | ojo que inicia (`"R"` o `"L"`) |
+| `siguiente_optotipo` | `agudeza.{ojoActivo}`: `logmarActual`, `letraActual`, `letrasUsadas` (sin contadores) | solo si cambia el ojo activo |
+| `cierre_ojo_R_e_inicio_L` | `agudeza.R.logmarFinal` + `agudeza.L` bootstrap H@0.3 | **`"L"` obligatorio** |
+| `examen_finalizado` | `agudeza.L.logmarFinal` + `fase: "finalizado"` | sin cambio obligatorio |
+| `repregunta_sin_cambio` | `{}` | sin cambio |
+
+**Rutas prohibidas en `estadoPatch`:** `R` o `L` en la raíz del patch; `resultadosPorLogmar`; `aciertosPorLogmar`; `letraFinal` en cierres nuevos.
+
+**Checklist de forma (sí/no antes de emitir):**
+
+1. ¿Cada ojo mutado está en `estadoPatch.agudeza.{R|L}`?
+2. Si `evento === "cierre_ojo_R_e_inicio_L"`: ¿existen `ojoActual: "L"`, `agudeza.R.logmarFinal`, `agudeza.L` con H@0.3?
+3. ¿El patch no incluye contadores?
+4. Si hay `tv`: ¿`letra`/`logmar` = `agudeza.{ojo}` del patch (ojo activo tras el merge)?
+5. ¿Solo claves de la lista blanca (`fase`, `ojoActual`, `finalizado`, `agudeza`)?
+
+---
+
 ## Inicio del test por ojo (`modo: bootstrap`)
 
 1. Foróptero: RX + oclusión contralateral.
@@ -137,10 +161,30 @@ patch.agudeza.R.aciertosPorLogmar = {"0.3": 1, "0.2": 0, ...}  // RECHAZAR
 
 ## Transición R → L (mismo turno)
 
-1. Patch L: H@0.3, contadores 0, `letrasUsadas: ["H"]`.
-2. `ojoActual: "L"`.
-3. `acciones`: foróptero (L open, R close) + TV H@0.3.
-4. `evento: cierre_ojo_R_e_inicio_L`.
+1. Patch **`agudeza.L`**: H@0.3, `letrasUsadas: ["H"]` (sin contadores en patch).
+2. Patch **`agudeza.R`**: solo `logmarFinal` (sin `letraFinal`).
+3. **`ojoActual: "L"`** en `estadoPatch` (mismo nivel que `agudeza`).
+4. `acciones`: foróptero (L open, R close) + TV H@0.3.
+5. `evento: cierre_ojo_R_e_inicio_L`.
+
+### REGRESIÓN 2026-05-19 — `L` mal anidado (RECHAZAR)
+
+Propuesta inválida del log (turno 5): MQTT correcto, **memoria incorrecta**. El auditor debe rechazar aunque foróptero + TV estén bien.
+
+```json
+{
+  "estadoPatch": {
+    "agudeza": { "R": { "logmarFinal": 0.2 } },
+    "L": { "logmarActual": 0.3, "letraActual": "H", "letrasUsadas": ["H"] }
+  },
+  "evento": "cierre_ojo_R_e_inicio_L",
+  "acciones": [ "... foroptero + tv H@0.3 ..." ]
+}
+```
+
+Defectos: `L` en raíz del patch (debe ser `agudeza.L`); falta `ojoActual: "L"`. Tras merge, `ojoActual` sigue `"R"` → intérprete y registro operan sobre R.
+
+**Corrección:** usar el *Ejemplo literal* de abajo (misma estructura que la plantilla en `protocolo-agudeza.md`).
 
 **Atomicidad.** La transición R → L se emite como **una operación atómica** dentro del mismo turno: patch (R cierre con **`logmarFinal` solo** — sin `letraFinal` — + L inicializado a H@0.3 con `letrasUsadas:["H"]` **sin contadores en patch** + `ojoActual:"L"`) **+** `evento: "cierre_ojo_R_e_inicio_L"` **+** `acciones` (foróptero R close / L open + RX_L de `estadoAntes.rx.L`, luego TV H@0.3). Los contadores (`resultadosPorLogmar`) los escribe el servidor al registrar el intento; el protocolo **no** los incluye en el patch. Está **prohibido** emitir solo el patch sin evento/acciones, o cambiar `ojoActual` sin `logmarFinal` en R. Faltar cualquiera de los tres bloques invalida la propuesta.
 
