@@ -1,47 +1,93 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, '..');
+const MANIFEST_FILENAME = 'knowledge.manifest.json';
+const DEFAULT_CACHE_MS = 5000;
 
-const AGENTES_GENERICOS = new Set(['interprete', 'auditor', 'comunicacion']);
-
-const CORE_KNOWLEDGE = {
-  interprete: ['core/interpretacion-comun.md'],
-  auditor: ['core/auditoria-estructural.md'],
-  comunicacion: ['core/comunicacion-comun.md']
-};
-
-const FASE_KNOWLEDGE = {
-  agudeza: {
-    interprete: ['fases/agudeza/interpretacion.md'],
-    auditor: ['fases/agudeza/auditoria.md'],
-    comunicacion: ['fases/agudeza/comunicacion.md'],
-    protocolo: ['fases/agudeza/protocolo-estado.md', 'dispositivos.md']
-  }
-};
-
-const FASE_DEFAULT = 'agudeza';
+let contentRoot = null;
+let manifestCache = null;
+let manifestCacheAt = 0;
 
 /**
- * Fase clínica para cargar knowledge (examen global puede estar en agudeza o finalizado).
+ * @param {string} root
+ */
+export function setKnowledgeRoot(root) {
+  contentRoot = path.resolve(root);
+}
+
+export function getKnowledgeRoot() {
+  if (!contentRoot) {
+    throw new Error(
+      'Knowledge no inicializado. Ejecutá asegurarKnowledgeRepo() al arranque.'
+    );
+  }
+  return contentRoot;
+}
+
+export function invalidarCacheManifest() {
+  manifestCache = null;
+  manifestCacheAt = 0;
+}
+
+function manifestCacheTtlMs() {
+  const raw = process.env.KNOWLEDGE_MANIFEST_CACHE_MS;
+  if (raw === undefined || raw === '') {
+    return DEFAULT_CACHE_MS;
+  }
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_CACHE_MS;
+}
+
+function loadManifest() {
+  const ttl = manifestCacheTtlMs();
+  const now = Date.now();
+  if (manifestCache && ttl > 0 && now - manifestCacheAt < ttl) {
+    return manifestCache;
+  }
+
+  const root = getKnowledgeRoot();
+  const manifestPath = path.join(root, MANIFEST_FILENAME);
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`No existe ${manifestPath}`);
+  }
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  manifestCache = manifest;
+  manifestCacheAt = now;
+  return manifest;
+}
+
+/**
  * @param {string} [fase]
  * @returns {string}
  */
 export function resolverFaseKnowledge(fase) {
-  if (fase && FASE_KNOWLEDGE[fase]) {
+  const manifest = loadManifest();
+  if (fase && manifest.phases?.[fase]) {
     return fase;
   }
-  return FASE_DEFAULT;
+  return manifest.defaultPhase ?? 'agudeza';
 }
 
+/**
+ * @param {string} relPath — path desde raíz del repo (ej. knowledge/core/foo.md)
+ */
 export function leerMarkdown(relPath) {
-  const full = path.join(ROOT, 'knowledge', relPath);
+  const full = path.join(getKnowledgeRoot(), relPath);
   if (!fs.existsSync(full)) {
-    throw new Error(`Knowledge no encontrado: knowledge/${relPath}`);
+    throw new Error(`Archivo no encontrado: ${relPath}`);
   }
   return fs.readFileSync(full, 'utf8');
+}
+
+function agentConfig(agente, fase) {
+  const manifest = loadManifest();
+  const f = resolverFaseKnowledge(fase);
+  const cfg = manifest.phases?.[f]?.[agente];
+  if (!cfg) {
+    throw new Error(`Sin entrada en manifest para fase "${f}" agente "${agente}"`);
+  }
+  return cfg;
 }
 
 /**
@@ -49,31 +95,13 @@ export function leerMarkdown(relPath) {
  * @param {string} [fase]
  */
 export function cargarPrompt(agente, fase) {
-  if (agente === 'protocolo') {
-    const f = resolverFaseKnowledge(fase);
-    const especifico = path.join(ROOT, 'prompts', `protocolo-${f}.md`);
-    if (fs.existsSync(especifico)) {
-      return fs.readFileSync(especifico, 'utf8');
-    }
-  }
-  const generico = path.join(ROOT, 'prompts', `${agente}.md`);
-  if (!fs.existsSync(generico)) {
-    throw new Error(`Prompt no encontrado: prompts/${agente}.md`);
-  }
-  return fs.readFileSync(generico, 'utf8');
+  const cfg = agentConfig(agente, fase);
+  return leerMarkdown(cfg.prompt);
 }
 
 function listarKnowledge(agente, fase) {
-  const f = resolverFaseKnowledge(fase);
-  const faseFiles = FASE_KNOWLEDGE[f]?.[agente];
-  if (!faseFiles) {
-    throw new Error(`Sin knowledge de fase "${f}" para agente: ${agente}`);
-  }
-  if (AGENTES_GENERICOS.has(agente)) {
-    const core = CORE_KNOWLEDGE[agente] ?? [];
-    return [...core, ...faseFiles];
-  }
-  return faseFiles;
+  const cfg = agentConfig(agente, fase);
+  return cfg.knowledge ?? [];
 }
 
 /**
@@ -89,9 +117,33 @@ export function cargarKnowledgeAgente(agente, fase) {
 
 /**
  * @param {string} agente
- * @param {string} [fase] — desde estado.fase del examen
+ * @param {string} [fase]
  */
 export function cargarSystemAgente(agente, fase) {
   const f = resolverFaseKnowledge(fase);
   return [cargarPrompt(agente, f), cargarKnowledgeAgente(agente, f)].join('\n\n');
+}
+
+/**
+ * Info para /api/health (requiere bootstrap previo).
+ */
+export function obtenerInfoKnowledge() {
+  const root = getKnowledgeRoot();
+  let version = null;
+  let manifestMtime = null;
+  try {
+    const manifest = loadManifest();
+    version = manifest.version ?? null;
+    const stat = fs.statSync(path.join(root, MANIFEST_FILENAME));
+    manifestMtime = stat.mtime.toISOString();
+  } catch {
+    /* ignore */
+  }
+  return {
+    source: 'external',
+    root,
+    version,
+    manifestMtime,
+    manifestCacheMs: manifestCacheTtlMs()
+  };
 }

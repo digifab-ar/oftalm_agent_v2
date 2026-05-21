@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 todo.md
 
+# Clone local del repo de prompts/knowledge (repo git aparte)
+reference/Oftalm_agent_v2_prompts_knowledge/
+

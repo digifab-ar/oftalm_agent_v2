@@ -12,10 +12,20 @@ import {
 import { procesarTurno } from './orquestadorExamen.js';
 import { inicializarEjecutores } from './ejecutarAcciones.js';
 import { AGENT_MODELS } from './lib/agentModels.js';
+import {
+  asegurarKnowledgeRepo,
+  recargarKnowledgeRepo,
+  obtenerBootstrapInfo
+} from './lib/knowledgeBootstrap.js';
+import { obtenerInfoKnowledge } from './lib/knowledge.js';
+import {
+  bearerMatches,
+  verifyGithubWebhookSignature,
+  isPushToMain
+} from './lib/knowledgeAdmin.js';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 const MQTT_SERVER = process.env.MQTT_SERVER || 'mqtt://broker.hivemq.com';
@@ -24,6 +34,11 @@ const MQTT_TOPIC_STATE = process.env.MQTT_TOPIC_STATE || 'foroptero01/state';
 const MQTT_TOPIC_PANTALLA =
   process.env.MQTT_TOPIC_PANTALLA || 'foroptero01/pantalla';
 const TOKEN_ESPERADO = process.env.TOKEN_ESPERADO || 'foropteroiñaki2022#';
+const KNOWLEDGE_RELOAD_TOKEN = process.env.KNOWLEDGE_RELOAD_TOKEN ?? '';
+const KNOWLEDGE_GITHUB_WEBHOOK_SECRET =
+  process.env.KNOWLEDGE_GITHUB_WEBHOOK_SECRET ?? '';
+const KNOWLEDGE_WEBHOOK_ENABLED =
+  process.env.KNOWLEDGE_WEBHOOK_ENABLED !== 'false';
 const TIMEOUT_OFFLINE_MS = 90 * 1000;
 const INTERVALO_CHECK_MS = 60 * 1000;
 
@@ -114,12 +129,48 @@ export async function ejecutarComandoTVInterno(config) {
   return { ok: true, status: 'sent', letra, logmar };
 }
 
+function knowledgeHealthPayload() {
+  try {
+    return {
+      ...obtenerInfoKnowledge(),
+      ...obtenerBootstrapInfo()
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleRecargarKnowledge(req, res) {
+  if (!KNOWLEDGE_RELOAD_TOKEN.trim()) {
+    return res.status(503).json({
+      ok: false,
+      error: 'KNOWLEDGE_RELOAD_TOKEN no configurado'
+    });
+  }
+  if (!bearerMatches(req, KNOWLEDGE_RELOAD_TOKEN)) {
+    return res.status(401).json({ ok: false, error: 'No autorizado' });
+  }
+
+  try {
+    const result = await recargarKnowledgeRepo();
+    if (!result.ok) {
+      return res.status(409).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error('❌ recargar-knowledge:', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
 // --- Dispositivos HTTP (manual / debug) ---
+
+app.use(express.json());
 
 app.post('/api/movimiento', (req, res) => {
   const { accion, R, L } = req.body;
   if (!accion || (accion !== 'movimiento' && accion !== 'home')) {
-    return res.status(400).json({ error: "Acción inválida" });
+    return res.status(400).json({ error: 'Acción inválida' });
   }
   if (!R && !L) {
     return res.status(400).json({ error: 'Debe incluir R o L' });
@@ -151,6 +202,62 @@ app.get('/api/pantalla', (req, res) => {
   res.json(estadoPantalla);
 });
 
+// --- Knowledge admin ---
+
+app.post('/api/admin/recargar-knowledge', handleRecargarKnowledge);
+
+app.post(
+  '/api/admin/webhook/knowledge',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    if (!KNOWLEDGE_WEBHOOK_ENABLED) {
+      return res.status(404).json({ ok: false, error: 'Webhook deshabilitado' });
+    }
+
+    const rawBody = req.body;
+    const sig = req.headers['x-hub-signature-256'];
+    let authorized = false;
+
+    if (KNOWLEDGE_GITHUB_WEBHOOK_SECRET.trim()) {
+      authorized = verifyGithubWebhookSignature(
+        rawBody,
+        sig,
+        KNOWLEDGE_GITHUB_WEBHOOK_SECRET
+      );
+    }
+    if (!authorized && KNOWLEDGE_RELOAD_TOKEN.trim()) {
+      authorized = bearerMatches(req, KNOWLEDGE_RELOAD_TOKEN);
+    }
+
+    if (!authorized) {
+      return res.status(401).json({ ok: false, error: 'No autorizado' });
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawBody.toString('utf8'));
+    } catch {
+      return res.status(400).json({ ok: false, error: 'JSON inválido' });
+    }
+
+    if (payload.ref && !isPushToMain(payload)) {
+      return res.json({ ok: true, skipped: true, reason: 'not main' });
+    }
+
+    try {
+      const result = await recargarKnowledgeRepo();
+      if (!result.ok) {
+        return res.status(409).json(result);
+      }
+      console.log('🔔 Webhook knowledge: recarga OK', result.knowledge?.version);
+      return res.json(result);
+    } catch (err) {
+      console.error('❌ webhook knowledge:', err.message);
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+);
+
 // --- Examen (orquestador) ---
 
 app.get('/api/health', (req, res) => {
@@ -158,7 +265,8 @@ app.get('/api/health', (req, res) => {
     ok: true,
     servicio: 'foroptero-orchestrator',
     examenIniciado: examenIniciado(),
-    openai: Boolean(process.env.OPENAI_API_KEY)
+    openai: Boolean(process.env.OPENAI_API_KEY),
+    knowledge: knowledgeHealthPayload()
   });
 });
 
@@ -231,17 +339,28 @@ app.get('/api/examen/registro.csv', (req, res) => {
   res.send(csv);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Foróptero Orchestrator en puerto ${PORT}`);
-  for (const [id, cfg] of Object.entries(AGENT_MODELS)) {
-    const r = cfg.reasoning ? `, reasoning=${cfg.reasoning}` : '';
-    console.log(`   ${id}: ${cfg.model}${r}`);
+async function start() {
+  try {
+    await asegurarKnowledgeRepo({ pull: Boolean(process.env.KNOWLEDGE_GIT_URL?.trim()) });
+  } catch (err) {
+    console.error('❌ Knowledge bootstrap:', err.message);
+    process.exit(1);
   }
 
-  inicializarEjecutores(
-    ejecutarComandoForopteroInterno,
-    ejecutarComandoTVInterno
-  );
+  app.listen(PORT, () => {
+    console.log(`🚀 Foróptero Orchestrator en puerto ${PORT}`);
+    for (const [id, cfg] of Object.entries(AGENT_MODELS)) {
+      const r = cfg.reasoning ? `, reasoning=${cfg.reasoning}` : '';
+      console.log(`   ${id}: ${cfg.model}${r}`);
+    }
 
-  setInterval(checkHeartbeatTimeout, INTERVALO_CHECK_MS);
-});
+    inicializarEjecutores(
+      ejecutarComandoForopteroInterno,
+      ejecutarComandoTVInterno
+    );
+
+    setInterval(checkHeartbeatTimeout, INTERVALO_CHECK_MS);
+  });
+}
+
+start();

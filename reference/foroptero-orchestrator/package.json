@@ -10,7 +10,8 @@
     "test:agent": "node testAgent.js",
     "test:bootstrap": "node testAgent.js bootstrap",
     "test:registro": "node --test lib/registroAgudeza.test.js",
-    "test:vistas": "node --test test/vistasAgentes.test.js test/schemasVistas.test.js"
+    "test:vistas": "node --test test/vistasAgentes.test.js test/schemasVistas.test.js",
+    "test:knowledge": "node --test test/knowledgeLoader.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
