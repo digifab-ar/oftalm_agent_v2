@@ -431,7 +431,7 @@ function App() {
   const agentSetKey = searchParams.get("agentConfig") || defaultAgentSetKey;
 
   return (
-    <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
+    <div className="text-base flex flex-col h-screen bg-[rgb(230,222,255)] text-gray-800 relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center">
         <div
           className="flex items-center cursor-pointer"
@@ -447,7 +447,7 @@ function App() {
             />
           </div>
           <div>
-            Oftalmólogo <span className="text-gray-500">AI</span>
+            Oftalmólogo <span className="text-gray-500">MultiAgents</span>
           </div>
         </div>
         <div className="flex items-center hidden">

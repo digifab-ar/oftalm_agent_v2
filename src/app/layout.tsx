@@ -3,7 +3,7 @@ import "./globals.css";
 import "./lib/envSetup";
 
 export const metadata: Metadata = {
-  title: "Quitocito - Oftalmólogo AI",
+  title: "Quitocito - Oftalmólogo MultiAgents",
   description: "un agente AI oftalmológico",
   icons: {
     icon: "/DigiFab.svg",

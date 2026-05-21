@@ -5,10 +5,11 @@ Publicado en: [foroptero.framer.website/controlpanel](https://foroptero.framer.w
 
 ## Qué hace
 
-- **Observa** el examen en curso (no inicia ni reinicia exámenes).
+- **Observa** el examen en curso y puede **inicializar** una sesión vacía (`POST /api/examen/nuevo`).
 - Polling cada 1,5 s a `GET /api/examen/detalle` del orquestador.
 - Muestra por turno: `razonamientoInterno`, bloques por agente y acciones MQTT.
 - Resalta turnos con auditor **rechazado**.
+- Botón **Iniciar examen** → `POST /api/examen/nuevo`.
 - Controles manuales Run / Clear / Set Home contra el mismo orquestador.
 
 ## Backend

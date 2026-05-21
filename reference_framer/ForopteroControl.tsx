@@ -7,6 +7,7 @@ const ORCHESTRATOR_URL = "https://oftalmagentv2-production.up.railway.app"
 const API_ESTADO = `${ORCHESTRATOR_URL}/api/estado`
 const API_DETALLE = `${ORCHESTRATOR_URL}/api/examen/detalle`
 const API_MOVIMIENTO = `${ORCHESTRATOR_URL}/api/movimiento`
+const API_EXAMEN_NUEVO = `${ORCHESTRATOR_URL}/api/examen/nuevo`
 
 type AgudezaOjo = {
     logmarActual?: number | null
@@ -124,11 +125,13 @@ function formatoLente(lente: {
     return `Esf ${lente.esfera?.toFixed(2)} / Cil ${lente.cilindro?.toFixed(2)} @ ${lente.angulo}° (${lente.occlusion})`
 }
 
-const layout = {
-    display: "flex" as const,
+const layoutControles = {
+    display: "grid" as const,
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 168px",
     gap: 20,
-    alignItems: "flex-start" as const,
-    marginTop: 20,
+    alignItems: "stretch" as const,
+    width: "100%",
+    boxSizing: "border-box" as const,
 }
 
 const miniBox = {
@@ -168,7 +171,7 @@ const buttonColumn = {
     display: "flex" as const,
     flexDirection: "column" as const,
     gap: 10,
-    width: 140,
+    justifyContent: "flex-start" as const,
 }
 
 const bigBtn = {
@@ -414,6 +417,7 @@ export function ForopteroControl() {
     const [examenActivo, setExamenActivo] = useState(false)
     const [errorDetalle, setErrorDetalle] = useState<string | null>(null)
     const [seguirUltimoTurno, setSeguirUltimoTurno] = useState(true)
+    const [iniciandoExamen, setIniciandoExamen] = useState(false)
 
     const historialScrollRef = useRef<HTMLDivElement>(null)
     const historialLenRef = useRef(0)
@@ -543,6 +547,33 @@ export function ForopteroControl() {
         setStatus("Valores reseteados")
     }
 
+    async function iniciarExamen() {
+        setIniciandoExamen(true)
+        try {
+            const res = await fetch(API_EXAMEN_NUEVO, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.ok) {
+                setStatus(
+                    `⚠️ ${data.error || data.mensaje || "Error al iniciar examen"}`
+                )
+                return
+            }
+            setStatus(
+                data.mensaje
+                    ? `✓ ${data.mensaje}`
+                    : "✓ Examen inicializado en el orquestador"
+            )
+        } catch {
+            setStatus("⚠️ Error de red al iniciar examen")
+        } finally {
+            setIniciandoExamen(false)
+        }
+    }
+
     async function run() {
         try {
             const res = await fetch(API_MOVIMIENTO, {
@@ -582,7 +613,9 @@ export function ForopteroControl() {
                 padding: 20,
                 fontFamily: "Inter, sans-serif",
                 position: "relative",
-                maxWidth: 1200,
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
             }}
         >
             <div
@@ -612,22 +645,30 @@ export function ForopteroControl() {
                 )}
             </div>
 
-            <h2 style={{ marginBottom: 8 }}>Panel de Control del Foróptero</h2>
+            <h2 style={{ marginBottom: 8, paddingRight: 280 }}>
+                Panel de Control del Foróptero
+            </h2>
             <p
                 style={{
                     margin: "0 0 24px",
                     fontSize: 13,
                     color: "#6b7280",
-                    maxWidth: 720,
                 }}
             >
-                Observación QA del pipeline multi-agente. El examen se inicia
-                desde la app de voz (mismo orquestador). Este panel no inicia ni
-                reinicia exámenes.
+                Observación QA del pipeline multi-agente (mismo orquestador que
+                la app de voz). Podés iniciar una sesión vacía con el botón de la
+                derecha; el bootstrap clínico ocurre en el primer turno de voz.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <div style={layout}>
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 20,
+                    width: "100%",
+                }}
+            >
+                <div style={layoutControles}>
                     <div style={miniBox}>
                         <h3 style={{ margin: 0 }}>Ojo Derecho (R)</h3>
                         <div style={{ marginTop: 10 }}>Esfera</div>
@@ -740,6 +781,20 @@ export function ForopteroControl() {
                         <button
                             style={{
                                 ...bigBtn,
+                                background: "#15803d",
+                                color: "#fff",
+                                opacity: iniciandoExamen ? 0.7 : 1,
+                            }}
+                            onClick={iniciarExamen}
+                            disabled={iniciandoExamen}
+                        >
+                            {iniciandoExamen
+                                ? "Iniciando…"
+                                : "Iniciar examen"}
+                        </button>
+                        <button
+                            style={{
+                                ...bigBtn,
                                 background: "#000",
                                 color: "#fff",
                             }}
@@ -782,7 +837,7 @@ export function ForopteroControl() {
                     {!examenActivo ? (
                         <p style={{ margin: 0, fontSize: 14, color: "#b45309" }}>
                             {errorDetalle ||
-                                "Sin examen activo — iniciá desde la app de voz"}
+                                'Sin examen activo — usá "Iniciar examen" o la app de voz'}
                         </p>
                     ) : (
                         <div style={{ fontSize: 14, lineHeight: 1.7 }}>
@@ -880,7 +935,7 @@ export function ForopteroControl() {
                             <p style={{ fontSize: 13, color: "#9ca3af" }}>
                                 {examenActivo
                                     ? "Aún no hay turnos registrados."
-                                    : "Iniciá un examen desde la voz para ver la traza."}
+                                    : 'Usá "Iniciar examen" o la voz para ver la traza.'}
                             </p>
                         ) : (
                             historial.map((turno, i) => (
