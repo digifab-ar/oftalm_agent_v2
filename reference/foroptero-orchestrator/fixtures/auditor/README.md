@@ -15,5 +15,9 @@ Cada fixture incluye `esperado.aprobado` y notas. No hay runner automatizado en 
 | AUD-05 | `AUD-05-no_ve-sube-dos-pasos.json` | `no_ve` 0.1→0.3 | `aprobado: false` |
 | AUD-06 | `AUD-06-ambigua-sin-acciones.json` | `ambigua` | `aprobado: true` |
 | AUD-07 | `AUD-07-no_ve-resetea-contador.json` | `no_ve` @0.1, `0.2:1` previo, patch resetea `0.2` a 0 | `aprobado: false` |
+| AUD-11 | `AUD-11-bug005-letra-nueva.json` | `correcta` BAJAR, letra T ∉ previas `["H","O"]` | `aprobado: true` |
+| AUD-12 | `AUD-12-bug005-letra-reutilizada.json` | `correcta` BAJAR 0.1→0.0, reutiliza H | `aprobado: false` (BUG-005) |
 
 Regresión log 2026-05-19: **AUD-01** reproduce el caso correcto del turno 4 (“veo borroso”); **AUD-07** reproduce el bug real del turno 4 (reset de contadores ganados que el auditor aprobó por error).
+
+Regresión log 2026-05-22: **AUD-12** + fixture protocolo `fixtures/protocolo/BUG005-L-bajar-0.0.json` (QA manual auditor/protocolo LLM).

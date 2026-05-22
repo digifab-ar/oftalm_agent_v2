@@ -7,6 +7,7 @@ function construirUser(vista) {
     '## Vista del turno (VistaProtocolo)',
     'Los contadores en `agudeza[ojoActual].contadoresLogmarActual` **ya incluyen** este turno si la clasificación fue correcta/incorrecta/no_ve.',
     '**Prohibido** incluir `resultadosPorLogmar` ni `aciertosPorLogmar` en `estadoPatch`.',
+    'En plantillas B/C: `letraActual` debe ser **∉** `letrasUsadas` pre-patch y el array del patch debe **extender** las previas (auto-verificación ítems 7–8; el auditor rechaza BUG-005 si no).',
     '```json',
     JSON.stringify(vista, null, 2),
     '```'

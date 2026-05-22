@@ -30,6 +30,8 @@ Campos: `fase`, `modo`, `ojoActual`, `agudeza.{R|L}` (operativos + `contadoresLo
 
 **Excluido:** `historial`, `intentosRegistrados`, `resultadosPorLogmar` completo, legacy.
 
+**BUG-005:** lo valida solo el **auditor LLM** vía `letrasUsadasResultantes` (precomputado en servidor para la vista, sin reglas clínicas duplicadas en código).
+
 ---
 
 ## VistaAuditor

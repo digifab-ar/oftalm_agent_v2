@@ -1,0 +1,50 @@
+{
+  "descripcion": "BUG-005 positivo — L extiende letrasUsadas con T nueva (no reutiliza H).",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "letrasUsadas": ["H", "O", "T", "E"],
+        "logmarFinal": 0.2,
+        "contadoresLogmarActual": { "correcto": 2, "incorrecto": 0 }
+      },
+      "L": {
+        "logmarActual": 0.2,
+        "letraActual": "O",
+        "letrasUsadas": ["H", "O"],
+        "logmarFinal": null,
+        "contadoresLogmarActual": { "correcto": 1, "incorrecto": 0 }
+      }
+    },
+    "interpretacion": {
+      "clasificacion": "correcta",
+      "letraElegida": "O",
+      "letrasCandidatas": ["O"]
+    }
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "agudeza": {
+        "L": {
+          "logmarActual": 0.1,
+          "letraActual": "T",
+          "letrasUsadas": ["H", "O", "T"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "T", "logmar": 0.1 }],
+    "evento": "siguiente_optotipo",
+    "letrasUsadasResultantes": {
+      "R": ["H", "O", "T", "E"],
+      "L": ["H", "O", "T"]
+    }
+  },
+  "esperado": {
+    "aprobado": true,
+    "notas": "letrasUsadasResultantes.L extiende ['H','O'] e incluye letraActual T"
+  }
+}

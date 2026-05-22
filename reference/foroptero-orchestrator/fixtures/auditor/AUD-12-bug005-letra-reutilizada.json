@@ -1,0 +1,51 @@
+{
+  "descripcion": "BUG-005 negativo — L reutiliza H y encoge letrasUsadas.",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "letrasUsadas": ["H", "O", "T", "E"],
+        "logmarFinal": 0.2,
+        "contadoresLogmarActual": { "correcto": 2, "incorrecto": 0 }
+      },
+      "L": {
+        "logmarActual": 0.1,
+        "letraActual": "T",
+        "letrasUsadas": ["H", "O", "T"],
+        "logmarFinal": null,
+        "contadoresLogmarActual": { "correcto": 1, "incorrecto": 0 }
+      }
+    },
+    "interpretacion": {
+      "clasificacion": "correcta",
+      "letraElegida": "T",
+      "letrasCandidatas": ["T"]
+    }
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "agudeza": {
+        "L": {
+          "logmarActual": 0,
+          "letraActual": "H",
+          "letrasUsadas": ["H"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "H", "logmar": 0 }],
+    "evento": "siguiente_optotipo",
+    "letrasUsadasResultantes": {
+      "R": ["H", "O", "T", "E"],
+      "L": ["H"]
+    }
+  },
+  "esperado": {
+    "aprobado": false,
+    "violacionContiene": "BUG-005",
+    "notas": "H ya en previas; array encogido 3→1"
+  }
+}

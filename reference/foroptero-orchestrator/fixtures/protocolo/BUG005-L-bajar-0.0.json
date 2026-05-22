@@ -1,0 +1,67 @@
+{
+  "descripcion": "Regresión BUG-005 — log 2026-05-22 turno 8. L correcta T@0.1 c=1 → BAJAR a 0.0 con letra nueva (no H).",
+  "vistaProtocolo": {
+    "fase": "agudeza",
+    "modo": "respuesta",
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "letrasUsadas": ["H", "O", "T", "E"],
+        "logmarFinal": 0.2,
+        "contadoresLogmarActual": { "correcto": 2, "incorrecto": 0 }
+      },
+      "L": {
+        "logmarActual": 0.1,
+        "letraActual": "T",
+        "letrasUsadas": ["H", "O", "T"],
+        "logmarFinal": null,
+        "contadoresLogmarActual": { "correcto": 1, "incorrecto": 0 }
+      }
+    },
+    "rx": {
+      "R": { "esfera": 0.75, "cilindro": -1.75, "angulo": 60 },
+      "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0 }
+    },
+    "interpretacion": {
+      "clasificacion": "correcta",
+      "letraElegida": "T",
+      "letrasCandidatas": ["T"],
+      "notasInterprete": ""
+    },
+    "feedbackAuditor": null
+  },
+  "propuestaInvalida": {
+    "estadoPatch": {
+      "agudeza": {
+        "L": {
+          "logmarActual": 0,
+          "letraActual": "H",
+          "letrasUsadas": ["H"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "H", "logmar": 0 }],
+    "evento": "siguiente_optotipo",
+    "razonamientoProtocolo": "c=1 en L@0.1; bajo a 0.0 y roté letra a H."
+  },
+  "propuestaValida": {
+    "estadoPatch": {
+      "agudeza": {
+        "L": {
+          "logmarActual": 0,
+          "letraActual": "E",
+          "letrasUsadas": ["H", "O", "T", "E"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "E", "logmar": 0 }],
+    "evento": "siguiente_optotipo",
+    "razonamientoProtocolo": "c=1 en L@0.1; bajo a 0.0, nueva letra E."
+  },
+  "auditorEsperado": {
+    "propuestaInvalida": { "aprobado": false, "violacionContiene": "BUG-005" },
+    "propuestaValida": { "aprobado": true }
+  }
+}
