@@ -18,6 +18,33 @@ import { ejecutarComunicacion } from './agents/comunicacion.js';
 
 const MAX_REINTENTOS_PROTOCOLO = 1;
 
+/** @returns {{ interprete: number, protocolo: number, auditor: number, comunicacion: number, total: number }} */
+export function crearTimingMs() {
+  return {
+    interprete: 0,
+    protocolo: 0,
+    auditor: 0,
+    comunicacion: 0,
+    total: 0
+  };
+}
+
+/** Suma agentes LLM (sin MQTT). */
+export function finalizarTimingMs(timing) {
+  timing.total =
+    timing.interprete +
+    timing.protocolo +
+    timing.auditor +
+    timing.comunicacion;
+  return timing;
+}
+
+async function medirMs(fn) {
+  const t0 = performance.now();
+  const result = await fn();
+  return { result, ms: Math.round(performance.now() - t0) };
+}
+
 const CLASIFICACIONES_CLINICAS_CLARAS = new Set([
   'correcta',
   'incorrecta',
@@ -155,7 +182,8 @@ async function protocoloConAuditoria(
   estadoTrasRegistro,
   interpretacion,
   modo,
-  registroIntento
+  registroIntento,
+  timing
 ) {
   let feedbackAuditor = null;
   const opciones = { modo };
@@ -167,7 +195,11 @@ async function protocoloConAuditoria(
       modo,
       feedbackAuditor
     );
-    const propuesta = await ejecutarProtocolo(vistaProtocolo, opciones);
+    const protocolo = await medirMs(() =>
+      ejecutarProtocolo(vistaProtocolo, opciones)
+    );
+    timing.protocolo += protocolo.ms;
+    const propuesta = protocolo.result;
 
     const vistaAuditor = armarVistaAuditor(
       estadoTrasRegistro,
@@ -176,7 +208,11 @@ async function protocoloConAuditoria(
       modo,
       registroIntento
     );
-    const auditoria = await ejecutarAuditor(vistaAuditor, opciones);
+    const auditor = await medirMs(() =>
+      ejecutarAuditor(vistaAuditor, opciones)
+    );
+    timing.auditor += auditor.ms;
+    const auditoria = auditor.result;
 
     if (auditoria.aprobado) {
       return { propuesta, auditoria, reintentos: intento };
@@ -231,9 +267,12 @@ export async function procesarTurnoPipeline(
     falloAuditor: false
   };
 
+  const timingMs = crearTimingMs();
+
   try {
     if (modo === 'bootstrap') {
       traza.interpretacion = interpretacionBootstrap();
+      timingMs.interprete = 0;
     } else {
       const vistaInterprete = armarVistaInterprete(
         estadoAntes,
@@ -241,7 +280,11 @@ export async function procesarTurnoPipeline(
         conf,
         modo
       );
-      traza.interpretacion = await ejecutarInterprete(vistaInterprete, { modo });
+      const interprete = await medirMs(() =>
+        ejecutarInterprete(vistaInterprete, { modo })
+      );
+      traza.interpretacion = interprete.result;
+      timingMs.interprete = interprete.ms;
     }
 
     if (modo === 'respuesta') {
@@ -266,7 +309,8 @@ export async function procesarTurnoPipeline(
       estadoTrasRegistro,
       traza.interpretacion,
       modo,
-      traza.registroIntento
+      traza.registroIntento,
+      timingMs
     );
 
     if (!resultadoProtocolo) {
@@ -290,6 +334,7 @@ export async function procesarTurnoPipeline(
       }
       propuestaAplicar = fb.propuestaProtocolo;
       comunicacion = fb.comunicacion;
+      timingMs.comunicacion = 0;
       console.warn(
         `⚠️ Pipeline (${modo}): auditor rechazó tras reintentos; fallback ${
           propuestaAplicar.detalleEvento?.motivo ?? 'desconocido'
@@ -307,7 +352,11 @@ export async function procesarTurnoPipeline(
         modo,
         huboCambioDispositivo
       });
-      comunicacion = await ejecutarComunicacion(vistaComunicacion, { modo });
+      const comm = await medirMs(() =>
+        ejecutarComunicacion(vistaComunicacion, { modo })
+      );
+      comunicacion = comm.result;
+      timingMs.comunicacion = comm.ms;
     }
 
     traza.comunicacion = comunicacion;
@@ -316,6 +365,12 @@ export async function procesarTurnoPipeline(
     const accionesEjecutadas = await ejecutarAcciones(propuestaAplicar.acciones);
 
     const razonamientoInterno = armarRazonamientoInterno(traza, modo);
+    finalizarTimingMs(timingMs);
+    console.log(
+      `⏱ Pipeline (${modo}): total ${timingMs.total} ms ` +
+        `(i=${timingMs.interprete} p=${timingMs.protocolo} ` +
+        `a=${timingMs.auditor} c=${timingMs.comunicacion})`
+    );
 
     registrarTurnoHistorial({
       respuestaPaciente:
@@ -333,7 +388,8 @@ export async function procesarTurnoPipeline(
       acciones: propuestaAplicar.acciones,
       estadoPatch: propuestaAplicar.estadoPatch,
       pipeline: true,
-      modoTurno: modo
+      modoTurno: modo,
+      timingMs
     });
 
     return {
@@ -342,6 +398,7 @@ export async function procesarTurnoPipeline(
       contextoVoz: comunicacion.contextoVoz,
       accionesEjecutadas,
       modoTurno: modo,
+      timingMs,
       pipeline: traza
     };
   } catch (err) {

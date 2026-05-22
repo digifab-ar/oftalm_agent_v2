@@ -25,8 +25,17 @@ type DetalleExamen = {
     historial?: TurnoHistorial[]
 }
 
+type TurnoTimingMs = {
+    total: number
+    interprete: number
+    protocolo: number
+    auditor: number
+    comunicacion: number
+}
+
 type TurnoHistorial = {
     ts?: string
+    timingMs?: TurnoTimingMs
     respuestaPaciente?: string | null
     confianza?: number
     modoTurno?: string
@@ -67,6 +76,10 @@ type AccionDispositivo = {
 
 function formatoValor(valor: unknown) {
     return valor !== null && valor !== undefined ? String(valor) : "—"
+}
+
+function formatoMs(ms: number) {
+    return `${ms} ms`
 }
 
 function formatoHora(ts?: string) {
@@ -191,6 +204,16 @@ const seccionAgente = {
     lineHeight: 1.5,
 }
 
+const badgeTiming = {
+    fontSize: 11,
+    padding: "2px 8px",
+    borderRadius: 4,
+    background: "#f3f4f6",
+    color: "#4b5563",
+    fontFamily: "ui-monospace, monospace",
+    fontWeight: 500,
+}
+
 const preRazonamiento = {
     margin: "10px 0 0",
     padding: 10,
@@ -212,6 +235,7 @@ function TurnoQACard({
 }) {
     const rechazado = turno.auditoria?.aprobado === false
     const acciones = turno.acciones ?? turno.propuestaProtocolo?.acciones
+    const t = turno.timingMs
 
     return (
         <div
@@ -263,6 +287,11 @@ function TurnoQACard({
                 >
                     Auditor: {rechazado ? "Rechazado" : "Aprobado"}
                 </span>
+                {t && (
+                    <span style={badgeTiming}>
+                        Total: {formatoMs(t.total)}
+                    </span>
+                )}
             </div>
 
             <div style={{ fontSize: 13, marginBottom: 6 }}>
@@ -299,7 +328,14 @@ function TurnoQACard({
             )}
 
             <div style={seccionAgente}>
-                <strong>Intérprete</strong>
+                <strong>
+                    Intérprete
+                    {t && (
+                        <span style={{ ...badgeTiming, marginLeft: 8 }}>
+                            {formatoMs(t.interprete)}
+                        </span>
+                    )}
+                </strong>
                 <div>
                     clasificación:{" "}
                     {formatoValor(turno.interpretacion?.clasificacion)}
@@ -323,7 +359,14 @@ function TurnoQACard({
             </div>
 
             <div style={seccionAgente}>
-                <strong>Protocolo</strong>
+                <strong>
+                    Protocolo
+                    {t && (
+                        <span style={{ ...badgeTiming, marginLeft: 8 }}>
+                            {formatoMs(t.protocolo)}
+                        </span>
+                    )}
+                </strong>
                 <div>evento: {formatoValor(turno.propuestaProtocolo?.evento)}</div>
                 {turno.propuestaProtocolo?.detalleEvento?.motivo && (
                     <div>
@@ -341,7 +384,14 @@ function TurnoQACard({
             </div>
 
             <div style={seccionAgente}>
-                <strong>Auditor</strong>
+                <strong>
+                    Auditor
+                    {t && (
+                        <span style={{ ...badgeTiming, marginLeft: 8 }}>
+                            {formatoMs(t.auditor)}
+                        </span>
+                    )}
+                </strong>
                 <div>aprobado: {turno.auditoria?.aprobado ? "sí" : "no"}</div>
                 {(turno.auditoria?.violaciones?.length ?? 0) > 0 && (
                     <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
@@ -358,7 +408,14 @@ function TurnoQACard({
             </div>
 
             <div style={seccionAgente}>
-                <strong>Comunicación</strong>
+                <strong>
+                    Comunicación
+                    {t && (
+                        <span style={{ ...badgeTiming, marginLeft: 8 }}>
+                            {formatoMs(t.comunicacion)}
+                        </span>
+                    )}
+                </strong>
                 {turno.comunicacion?.razonamientoComunicacion ? (
                     <div style={{ marginTop: 4, color: "#4b5563" }}>
                         {turno.comunicacion.razonamientoComunicacion}
