@@ -1,0 +1,63 @@
+{
+  "descripcion": "Regresión BUG-006 — log post-deploy 2026-05-22 turno 6. Primer acierto L@0.3 con R ya cerrado.",
+  "vistaProtocolo": {
+    "fase": "agudeza",
+    "modo": "respuesta",
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "letrasUsadas": ["H", "O", "T", "E"],
+        "logmarFinal": 0.2,
+        "contadoresLogmarActual": { "correcto": 2, "incorrecto": 0 }
+      },
+      "L": {
+        "logmarActual": 0.3,
+        "letraActual": "H",
+        "letrasUsadas": ["H"],
+        "logmarFinal": null,
+        "contadoresLogmarActual": { "correcto": 1, "incorrecto": 0 }
+      }
+    },
+    "rx": {
+      "R": { "esfera": 0.75, "cilindro": -1.75, "angulo": 60 },
+      "L": { "esfera": 2.75, "cilindro": 0, "angulo": 0 }
+    },
+    "interpretacion": {
+      "clasificacion": "correcta",
+      "letraElegida": "H",
+      "letrasCandidatas": ["H"],
+      "notasInterprete": ""
+    },
+    "feedbackAuditor": null
+  },
+  "propuestaInvalida": {
+    "estadoPatch": {
+      "agudeza": {
+        "R": { "logmarFinal": 0.2 }
+      }
+    },
+    "acciones": [],
+    "evento": "cierre_ojo_R_e_inicio_L",
+    "razonamientoProtocolo": "c=1 en 0.3; cierre R con logmarFinal 0.2 y inicio L con H@0.3."
+  },
+  "propuestaValida": {
+    "estadoPatch": {
+      "agudeza": {
+        "L": {
+          "logmarActual": 0.2,
+          "letraActual": "O",
+          "letrasUsadas": ["H", "O"]
+        }
+      }
+    },
+    "acciones": [{ "dispositivo": "tv", "letra": "O", "logmar": 0.2 }],
+    "evento": "siguiente_optotipo",
+    "razonamientoProtocolo": "c=1 en L@0.3; bajo a 0.2, nueva letra O."
+  },
+  "auditorEsperado": {
+    "propuestaInvalida": { "aprobado": false, "violacionContiene": "BUG-006" },
+    "propuestaValida": { "aprobado": true }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "descripcion": "BUG-006 negativo — L correcta @0.3 con R.logmarFinal set; protocolo re-emite cierre R→L.",
+  "modo": "respuesta",
+  "estadoAntes": {
+    "fase": "agudeza",
+    "ojoActual": "L",
+    "agudeza": {
+      "R": {
+        "logmarActual": 0.2,
+        "letraActual": "E",
+        "letrasUsadas": ["H", "O", "T", "E"],
+        "logmarFinal": 0.2,
+        "contadoresLogmarActual": { "correcto": 2, "incorrecto": 0 }
+      },
+      "L": {
+        "logmarActual": 0.3,
+        "letraActual": "H",
+        "letrasUsadas": ["H"],
+        "logmarFinal": null,
+        "contadoresLogmarActual": { "correcto": 1, "incorrecto": 0 }
+      }
+    },
+    "interpretacion": {
+      "clasificacion": "correcta",
+      "letraElegida": "H",
+      "letrasCandidatas": ["H"]
+    }
+  },
+  "propuestaProtocolo": {
+    "estadoPatch": {
+      "agudeza": {
+        "R": { "logmarFinal": 0.2 }
+      }
+    },
+    "acciones": [],
+    "evento": "cierre_ojo_R_e_inicio_L",
+    "letrasUsadasResultantes": {
+      "R": ["H", "O", "T", "E"],
+      "L": ["H"]
+    }
+  },
+  "esperado": {
+    "aprobado": false,
+    "violacionContiene": "BUG-006",
+    "notas": "R ya cerrado; evento cierre R→L prohibido aunque el patch sea parcial"
+  }
+}

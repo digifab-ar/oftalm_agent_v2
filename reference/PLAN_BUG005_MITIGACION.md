@@ -83,3 +83,7 @@ Evitar que el agente protocolo reutilice letras Sloan ya presentes en `letrasUsa
 - [x] Auditor con corrección BUG-005 sin reutilizar H.
 - [x] Fixtures AUD-11 / AUD-12 + BUG005-L-bajar-0.0.
 - [x] Pipeline sin validación determinista de letras (solo auditor LLM).
+
+## Plan relacionado
+
+- Re-cierre R→L (post-deploy turno 6): [PLAN_BUG006_RECIERRE_R_L.md](./PLAN_BUG006_RECIERRE_R_L.md) — implementado en knowledge + fixtures

@@ -32,11 +32,15 @@ Campos: `fase`, `modo`, `ojoActual`, `agudeza.{R|L}` (operativos + `contadoresLo
 
 **BUG-005:** lo valida solo el **auditor LLM** vía `letrasUsadasResultantes` (precomputado en servidor para la vista, sin reglas clínicas duplicadas en código).
 
+**BUG-006:** el protocolo debe usar `agudeza.R.logmarFinal` / `agudeza.L.logmarFinal` de la vista para no reemitir `cierre_ojo_R_e_inicio_L`. Validación solo por auditor LLM.
+
 ---
 
 ## VistaAuditor
 
 Igual que VistaProtocolo + `intentoRecienRegistrado` (solo `modo: respuesta`) + `propuestaProtocolo` con `letrasUsadasResultantes` (post-`deepMerge` simulado).
+
+Ante `cierre_ojo_R_e_inicio_L`, el auditor comprueba primero si `estadoAntes.agudeza.R.logmarFinal` ya está definido (**BUG-006**).
 
 ---
 
