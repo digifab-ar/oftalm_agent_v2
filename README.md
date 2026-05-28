@@ -22,10 +22,17 @@ Frontend (Next.js + Realtime)
 
 ## Documentación
 
-- [Diseño agente intermedio](./reference/DISENO_AGENTE_INTERMEDIO.md) — especificación completa de la PoC
-- [Orquestador — setup y endpoints](./reference/foroptero-orchestrator/README.md)
-- [Backend legado](./reference/foroptero-server/README.md) — solo referencia histórica
-- [Arquitectura endpoints MQTT/HTTP](./reference/ARQUITECTURA_ENDPOINTS.md) — servidor legado
+**Punto de entrada:** [docs/ARQUITECTURA.md](./docs/ARQUITECTURA.md) — síntesis del sistema, diagrama, componentes y links a todo lo demás.
+
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/ARQUITECTURA.md](./docs/ARQUITECTURA.md) | Síntesis del sistema, diagrama, inicio rápido |
+| [docs/REALTIME.md](./docs/REALTIME.md) | Frontend Next.js, agente de voz, guardrails |
+| [docs/ORQUESTADOR.md](./docs/ORQUESTADOR.md) | Pipeline 4 agentes, estado, MQTT, tests |
+| [docs/KNOWLEDGE.md](./docs/KNOWLEDGE.md) | Repo de knowledge, manifest, meta-agente |
+| [docs/API.md](./docs/API.md) | Endpoints HTTP y contratos de vistas |
+| [docs/historial/](./docs/historial/) | Planes de implementación archivados |
+| [reference/DISENO_AGENTE_INTERMEDIO.md](./reference/DISENO_AGENTE_INTERMEDIO.md) | Diseño original completo (PoC) |
 
 ## Requisitos
 

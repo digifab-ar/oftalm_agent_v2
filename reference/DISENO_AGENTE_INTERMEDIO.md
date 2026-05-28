@@ -71,33 +71,36 @@ El agente de voz:
 
 ---
 
-## 2. Contexto del sistema actual
+## 2. Contexto del sistema
 
-### 2.1 Componentes existentes
+> **Nota (2026-05-28):** Esta sección describe la arquitectura implementada en la PoC. El sistema legacy (`motorExamen.js` / `foroptero-server`) no forma parte de esta PoC; `reference/foroptero-server/` existe como referencia histórica únicamente.
+
+### 2.1 Componentes implementados (PoC)
 
 ```
 Frontend (Next.js + OpenAI Realtime)
-    → POST /api/examen/instrucciones  (tool obtenerEtapa)
-        → server.js (Railway producción)
-            → motorExamen.js (state machine ~4000 líneas)
+    → POST /api/examen/turno  (tool consultarExamen)
+        → foroptero-orchestrator (Express + OpenAI + MQTT)
+            → Pipeline 4 agentes LLM
             → MQTT → Foróptero + TV
 ```
 
 | Archivo | Rol |
 |---------|-----|
-| `src/app/agentConfigs/chatSupervisor/index.ts` | Agente de voz; interpreta agudeza/comparación; llama al backend |
-| `reference/foroptero-server/server.js` | HTTP, MQTT, endpoints de examen y dispositivos |
-| `reference/foroptero-server/motorExamen.js` | Lógica clínica, estado, generación de pasos, ejecución automática de dispositivos |
+| `src/app/agentConfigs/chatSupervisor/index.ts` | Agente de voz; tool `consultarExamen`; pronuncia mensajes del orquestador literal |
+| `reference/foroptero-orchestrator/server.js` | HTTP server, MQTT, endpoints del examen y dispositivos |
+| `reference/foroptero-orchestrator/pipelineTurno.js` | Lógica del pipeline multi-agente por turno |
+| `reference/foroptero-orchestrator/estadoExamen.js` | Estado en memoria, historial, tabla `resultadosPorLogmar` |
 
-### 2.2 Dónde vive el estado hoy
+### 2.2 Dónde vive el estado
 
 | Dato | Ubicación | Persistencia |
 |------|-----------|--------------|
-| Estado del examen (etapas, resultados, secuencia) | `motorExamen.js` → `estadoExamen` | Memoria (se pierde al reiniciar) |
-| Registro CSV / eventos | `motorExamen.js` → `registroExamenEventos` | Memoria |
-| Estado foróptero / TV | `server.js` | Memoria + MQTT |
+| Estado del examen (fase, resultados, secuencia) | `estadoExamen.js` → singleton en memoria | Memoria (se pierde al reiniciar) |
+| Registro historial / CSV | `estadoExamen.js` → `historial[]` | Memoria; exportable vía `GET /api/examen/registro.csv` |
+| Estado foróptero / TV | `server.js` + estado MQTT | Memoria + MQTT |
 
-`server.js` **no** define lógica clínica; es nexo HTTP/MQTT.
+`server.js` **no** define lógica clínica; es nexo HTTP/MQTT. La lógica clínica la definen los agentes LLM via prompts y knowledge externos.
 
 ### 2.3 Por qué cambiar
 

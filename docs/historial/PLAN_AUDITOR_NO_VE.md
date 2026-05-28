@@ -1,3 +1,8 @@
+> **Archivo archivado** — movido a `docs/historial/` el 2026-05-28. Estado original: Implementado (2026-05-19)
+> Ver [docs/ARQUITECTURA.md](../ARQUITECTURA.md) para la documentación vigente del sistema.
+
+---
+
 # Plan — Corrección agente auditor (`no_ve` / contadores)
 
 **Versión:** 0.1  

@@ -1,3 +1,8 @@
+> **Archivo archivado** — movido a `docs/historial/` el 2026-05-28. Estado original: Implementado (2026-05-19)
+> Ver [docs/ARQUITECTURA.md](../ARQUITECTURA.md) para la documentación vigente del sistema.
+
+---
+
 # Plan de implementación — Bootstrap del examen como turno explícito
 
 **Versión:** 0.1

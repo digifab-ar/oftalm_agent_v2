@@ -1,3 +1,8 @@
+> **Archivo archivado** — movido a `docs/historial/` el 2026-05-28. Estado original: Parcialmente implementado — lib/vistasAgentes.js implementado; propuesta de expansión pendiente
+> Ver [docs/ARQUITECTURA.md](../ARQUITECTURA.md) para la documentación vigente del sistema.
+
+---
+
 # Plan de implementación — Vistas mínimas por agente (regla del menor contexto)
 
 **Versión:** 0.2

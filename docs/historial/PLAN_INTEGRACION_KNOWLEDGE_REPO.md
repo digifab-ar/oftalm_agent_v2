@@ -1,3 +1,8 @@
+> **Archivo archivado** — movido a `docs/historial/` el 2026-05-28. Estado original: Implementado (2026-05-21)
+> Ver [docs/ARQUITECTURA.md](../ARQUITECTURA.md) para la documentación vigente del sistema.
+
+---
+
 # Plan de integración — orquestador × repo externo de knowledge
 
 **Estado:** implementado (2026-05-21).  
@@ -109,7 +114,9 @@ npm start
 | K4 | `cargarPrompt(agente, fase)`: leer `manifest.phases[f][agente].prompt` desde `CONTENT_ROOT` (path completo desde raíz del repo). Eliminar o dejar como fallback la convención `protocolo-${f}.md`. |
 | K5 | `listarKnowledge(agente, fase)`: devolver `manifest.phases[f][agente].knowledge[]` en orden. **No** usar `CORE_KNOWLEDGE` / `FASE_KNOWLEDGE` cuando manifest activo. |
 | K6 | `leerMarkdown(relPath)`: leer `path.join(CONTENT_ROOT, relPath)` — el manifest ya incluye prefijo `knowledge/...`. |
-| K7 | `cargarKnowledgeAgente`: mantener formato `---\n# {path}\n` + contenido (misma forma que hoy para no romper prompts). |
+| K7 | `cargarKnowledgeAgente`: mantener formato `---
+# {path}
+` + contenido (misma forma que hoy para no romper prompts). |
 | K8 | Eliminar `CORE_KNOWLEDGE`, `FASE_KNOWLEDGE` y rutas `ROOT/prompts`, `ROOT/knowledge`. |
 | K9 | `obtenerInfoKnowledge()` → `{ version, root, gitRef, commitShort, manifestMtime }` para health. |
 

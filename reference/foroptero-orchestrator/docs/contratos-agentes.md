@@ -2,6 +2,8 @@
 
 **Alcance:** shapes que el servidor proyecta antes de invocar a cada agente LLM. Implementación: `lib/vistasAgentes.js`, schemas en `agents/schemas.js`.
 
+Ver también: [docs/API.md — Vistas de agentes](../../../docs/API.md#5-vistas-de-agentes) para referencia completa con tipos.
+
 ---
 
 ## Principios
@@ -30,9 +32,9 @@ Campos: `fase`, `modo`, `ojoActual`, `agudeza.{R|L}` (operativos + `contadoresLo
 
 **Excluido:** `historial`, `intentosRegistrados`, `resultadosPorLogmar` completo, legacy.
 
-**BUG-005:** lo valida solo el **auditor LLM** vía `letrasUsadasResultantes` (precomputado en servidor para la vista, sin reglas clínicas duplicadas en código).
+**BUG-005:** lo valida solo el **auditor LLM** vía `letrasUsadasResultantes` (precomputado en servidor para la vista, sin reglas clínicas duplicadas en código). Reglas en `knowledge/core/auditoria-estructural.md` y `knowledge/fases/agudeza/auditoria.md`.
 
-**BUG-006:** el protocolo debe usar `agudeza.R.logmarFinal` / `agudeza.L.logmarFinal` de la vista para no reemitir `cierre_ojo_R_e_inicio_L`. Validación solo por auditor LLM.
+**BUG-006:** el protocolo debe usar `agudeza.R.logmarFinal` / `agudeza.L.logmarFinal` de la vista para no reemitir `cierre_ojo_R_e_inicio_L`. Validación solo por auditor LLM. Reglas en `knowledge/fases/agudeza/auditoria.md`.
 
 ---
 
@@ -71,3 +73,6 @@ Campos: `fase`, `modo`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuat
 
 - Sin alias `ojoActivo` / `ojoContrario`.
 - Sin pre-computar la rama clínica (eso sería “camino 3”, fuera de este plan).
+---
+
+_Nota: los planes de implementación de vistas (`PLAN_VISTAS_AGENTES.md`) fueron archivados en `docs/historial/` (2026-05-28)._
