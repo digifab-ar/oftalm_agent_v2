@@ -2,8 +2,8 @@
  * Modelos por agente del pipeline (fuente de verdad en código).
  * Editá acá para cambiar modelo / reasoning sin variables de entorno.
  *
- * POC actual: los cuatro en gpt-4.1-mini (más rápido que gpt-5-mini).
- * Si protocolo falla en cierres: protocolo en gpt-5-mini con reasoning: 'minimal'.
+ * interprete / comunicacion: gpt-4.1-mini (rápido).
+ * protocolo / auditor: gpt-5.4-mini snapshot fijo + reasoning minimal.
  */
 
 /** @typedef {{ model: string, reasoning?: 'minimal'|'low'|'medium'|'high' }} AgentModelConfig */
@@ -14,10 +14,12 @@ export const AGENT_MODELS = {
     model: 'gpt-4.1-mini'
   },
   protocolo: {
-    model: 'gpt-4.1-mini'
+    model: 'gpt-5.4-mini-2026-03-17',
+    reasoning: 'minimal'
   },
   auditor: {
-    model: 'gpt-4.1-mini'
+    model: 'gpt-5.4-mini-2026-03-17',
+    reasoning: 'minimal'
   },
   comunicacion: {
     model: 'gpt-4.1-mini'
