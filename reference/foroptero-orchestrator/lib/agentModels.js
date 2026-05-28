@@ -3,7 +3,7 @@
  * Editá acá para cambiar modelo / reasoning sin variables de entorno.
  *
  * interprete / comunicacion: gpt-4.1-mini (rápido).
- * protocolo / auditor: gpt-5.4-mini snapshot fijo + reasoning none.
+ * protocolo / auditor: gpt-5.4-mini snapshot fijo + reasoning medium.
  */
 
 /** @typedef {{ model: string, reasoning?: 'none'|'low'|'medium'|'high'|'xhigh' }} AgentModelConfig */
@@ -15,11 +15,11 @@ export const AGENT_MODELS = {
   },
   protocolo: {
     model: 'gpt-5.4-mini-2026-03-17',
-    reasoning: 'none'
+    reasoning: 'medium'
   },
   auditor: {
     model: 'gpt-5.4-mini-2026-03-17',
-    reasoning: 'none'
+    reasoning: 'medium'
   },
   comunicacion: {
     model: 'gpt-4.1-mini'
