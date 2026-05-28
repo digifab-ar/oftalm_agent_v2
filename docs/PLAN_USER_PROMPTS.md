@@ -358,7 +358,7 @@ Cada etapa se acepta si:
 1. **Tests unitarios pasan:** `npm run test:vistas` y `npm run test:registro`.
 2. **Fixtures de auditor pasan:** los fixtures afectados devuelven el `aprobado` esperado (tabla de casuísticas de auditor arriba).
 3. **Log de turno completo:** una sesión end-to-end produce `historial` con los mismos `razonamientoInterno` correctos (verificar que el LLM no pierde contexto crítico).
-4. **Sin regresión de timing:** el `timingMs.total` por turno no aumenta (la reducción de tokens debería mantenerlo igual o mejorarlo).
+4. **Sin regresión de latencia:** `timingMs.totalWallClock` por turno no aumenta respecto al baseline pre-paralelismo auditor/comunicación (o baja ~min(auditor, comunicacion) en camino feliz). `timingMs.total` puede seguir siendo mayor que wall-clock por diseño (suma no paralela de agentes).
 
 ---
 

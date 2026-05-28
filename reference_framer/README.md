@@ -35,6 +35,12 @@ Debe ser la **misma instancia** que `NEXT_PUBLIC_FOROPTERO_ORCHESTRATOR_URL` en 
 3. Verificar mini-card (ojo, logMAR, letra) y turnos que crecen con auto-scroll.
 4. Comparar un turno con `curl https://oftalmagentv2-production.up.railway.app/api/examen/detalle`.
 
+## Timing en el panel
+
+Cada turno muestra `timingMs.total` (suma de agentes). Tras el paralelismo auditor/comunicación en el orquestador, conviene interpretar **`timingMs.totalWallClock`** (si está en el JSON del historial) como latencia real del pipeline LLM en ese turno.
+
+Ejemplo: `total` puede ser ~11 s mientras `totalWallClock` es ~9,5 s cuando comunicación (~7,9 s) corrió en paralelo con auditor (~2,4 s). Ver [docs/API.md](../docs/API.md) y [docs/ORQUESTADOR.md](../docs/ORQUESTADOR.md#orquestación-y-latencia).
+
 ## CORS
 
 Si el panel no carga datos, en la consola del navegador verificar bloqueo CORS desde `https://foroptero.framer.website`. El orquestador usa `cors()` abierto; si falla, revisar despliegue Railway.

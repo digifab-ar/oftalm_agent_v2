@@ -10,7 +10,7 @@ Documentación de diseño: [../DISENO_AGENTE_INTERMEDIO.md](../DISENO_AGENTE_INT
 
 ## Pipeline multi-agente
 
-Por turno (`modo: respuesta`): **intérprete** → **registro de intento** (servidor, `resultadosPorLogmar`) → **protocolo** → **auditor** (hasta 1 reintento) → patch + MQTT → **comunicación**.
+Por turno (`modo: respuesta`): **intérprete** → **registro de intento** (servidor, `resultadosPorLogmar`) → **protocolo** → **auditor ∥ comunicación** (paralelo en intento 0; reintento secuencial si el auditor rechaza) → patch + MQTT.
 
 El protocolo **no escribe contadores** en el patch; lee la tabla ya actualizada. Ver [../PLAN_TABLA_RESULTADOS_AGUDEZA.md](../PLAN_TABLA_RESULTADOS_AGUDEZA.md).
 
@@ -23,6 +23,7 @@ Cuando el ojo activo aún no tiene `letraActual` ni `logmarActual` (estado vací
 - Detectado en `detectarModoTurno()` (`pipelineTurno.js`).
 - El intérprete se omite (clasificación fija `continuacion`).
 - Protocolo y auditor reciben `modo: bootstrap` en el user prompt y aplican *Inicio del test por ojo* (H@0.3, foróptero + TV).
+- Tras protocolo (intento 0), auditor y comunicación corren en paralelo (igual que en `modo: respuesta`).
 
 ```
 agents/              # llamadas OpenAI por rol

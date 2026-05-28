@@ -91,9 +91,26 @@ Si no se envía `rx`, se usan valores demo (`R: 0.75/-1.75@60`, `L: 2.75/0@0`).
   ],
   "contextoVoz": "esperar_respuesta",
   "modoTurno": "respuesta",
-  "timingMs": { "interprete": 420, "protocolo": 680, "auditor": 310, "comunicacion": 290, "total": 1700 }
+  "timingMs": {
+    "interprete": 420,
+    "protocolo": 680,
+    "auditor": 2430,
+    "comunicacion": 7879,
+    "total": 11409,
+    "totalWallClock": 9520
+  }
 }
 ```
+
+#### `timingMs` — semántica
+
+| Campo | Significado |
+|-------|-------------|
+| `interprete` … `comunicacion` | Milisegundos por agente (acumulados si hubo reintento de protocolo/auditor). |
+| `total` | Suma de los cuatro campos anteriores. No es latencia de pared cuando auditor y comunicación corrieron en paralelo. |
+| `totalWallClock` | Duración real del pipeline LLM en el servidor para ese turno (desde intérprete/bootstrap hasta comunicación o fallback; no incluye MQTT). |
+
+Para medir latencia percibida por el paciente en el orquestador, usar `totalWallClock` (más el tiempo de `ejecutarAcciones`, no incluido en estos campos).
 
 **Response (200, error clínico):**
 ```json
@@ -147,7 +164,7 @@ Cada entrada de `historial[]` puede incluir **`llmPrompts`** (si `PIPELINE_GUARD
 | `interprete` | `{ invocado, motivo?, user?, vista? }` — en bootstrap: `invocado: false`, `motivo: "bootstrap"` |
 | `protocolo` | `{ intentos: [{ intento, user, vista }] }` — un ítem por pasada (hasta 2 si hubo rechazo del auditor) |
 | `auditor` | `{ intentos: [{ intento, user, vista }] }` — alineado con cada intento de protocolo |
-| `comunicacion` | `{ invocado, motivo?, user?, vista? }` — si fallback por auditoría: `invocado: false` |
+| `comunicacion` | `{ invocado, motivo?, user?, vista? }` — si fallback por auditoría: `invocado: false`. En el camino feliz se invoca en paralelo con auditor (intento 0); si el auditor rechaza, `setPromptAgente` sobrescribe con la vista del reintento o con `invocado: false` en fallback. |
 
 Ejemplo (fragmento):
 

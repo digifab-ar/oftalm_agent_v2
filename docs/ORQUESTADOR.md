@@ -18,7 +18,7 @@ El orquestador es el backend clínico del sistema. Recibe cada turno del fronten
 reference/foroptero-orchestrator/
 ├── server.js                  # HTTP server, MQTT, endpoints
 ├── orquestadorExamen.js       # Entry point por turno (llamado desde server.js)
-├── pipelineTurno.js           # Lógica del pipeline (intérprete → protocolo → auditor → comunicación)
+├── pipelineTurno.js           # Orquestación (intérprete → protocolo → auditor ∥ comunicación)
 ├── estadoExamen.js            # Estado en memoria + historial + tabla resultadosPorLogmar
 ├── ejecutarAcciones.js        # Traducción patch → comandos MQTT
 ├── agents/
@@ -61,19 +61,21 @@ detectarModoTurno() → "respuesta"
 2. registrarIntentoAgudeza()
      Registra intento en tabla resultadosPorLogmar (idempotente por timestamp)
   ↓
-3. armarVistaProtocolo() → ejecutarProtocolo()
+3. armarVistaProtocolo() → ejecutarProtocolo() (intento 0)
      Propone: estadoPatch + acciones MQTT + evento clínico
   ↓
-4. armarVistaAuditor() → ejecutarAuditor()
-     Valida propuesta contra checklists y BUG catalog
-     Si rechaza → feedback al protocolo → 1 reintento
+4. armarVistaComunicacion() a partir de la propuesta del protocolo
+  ↓
+5. En paralelo:
+     ejecutarAuditor() sobre propuesta 0
+     ejecutarComunicacion() (optimista; se descarta si el auditor rechaza)
+  ↓
+6. Si el auditor rechaza en intento 0:
+     protocolo (intento 1, con feedbackAuditor) → auditor (intento 1) → comunicación (secuencial)
      Si rechaza de nuevo → fallbackAuditoria()
   ↓
-5. aplicarEstadoPatch()  ← escritura en estado
+7. aplicarEstadoPatch()  ← escritura en estado
    ejecutarAcciones()    ← MQTT foróptero + TV
-  ↓
-6. armarVistaComunicacion() → ejecutarComunicacion()
-     Redacta mensajesPaciente[] + contextoVoz
   ↓
 registrarTurnoHistorial()
   ↓
@@ -86,7 +88,30 @@ Activado cuando `letraActual == null && logmarActual == null` para el ojo activo
 
 - El intérprete se **omite** (clasificación fija: `continuacion`).
 - Protocolo y auditor reciben `modo: bootstrap` → aplican inicio de ojo: H@0.3, foróptero + TV.
+- Tras protocolo (intento 0), auditor y comunicación corren en **paralelo** (misma regla que en `modo: respuesta`).
 - Si el auditor rechaza → `fallbackBootstrap()` (mensaje neutro, sin asumir letra en pantalla).
+
+---
+
+### Orquestación y latencia
+
+Tras el protocolo (intento 0), **auditor** y **comunicación** se invocan en paralelo (`Promise.all`). La comunicación solo depende de `VistaComunicacion`, armada con la propuesta del protocolo (no del veredicto del auditor).
+
+| Camino | Orden LLM | Comunicación optimista |
+|--------|-----------|------------------------|
+| Auditor aprueba en intento 0 | protocolo₀ → max(auditor₀, comunicación₀) | Se usa |
+| Auditor rechaza 0, aprueba 1 | protocolo₀ → auditor₀ descartada → protocolo₁ → auditor₁ → comunicación₁ | Descartada; nueva llamada |
+| Auditor rechaza 0 y 1 | protocolo₀ → … → fallback hardcoded | Descartada; `timingMs.comunicacion = 0` |
+
+**`timingMs` por turno:**
+
+| Campo | Significado |
+|-------|-------------|
+| `interprete`, `protocolo`, `auditor`, `comunicacion` | Milisegundos por agente (acumulados si hubo reintento). |
+| `total` | Suma de los cuatro campos anteriores. Puede ser mayor que la latencia real si auditor y comunicación corrieron en paralelo. |
+| `totalWallClock` | Duración real del pipeline LLM en el servidor (desde intérprete/bootstrap hasta comunicación o fallback; antes de MQTT). |
+
+Log de consola: `wallClock=…ms cpu=…ms (i=… p=… a=… c=…)`.
 
 ---
 

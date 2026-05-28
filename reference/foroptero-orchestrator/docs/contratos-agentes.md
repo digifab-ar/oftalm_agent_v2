@@ -61,6 +61,19 @@ Campos: `fase`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuatro flags
 
 ---
 
+## Orden de invocación (servidor)
+
+| Agente | Depende de |
+|--------|------------|
+| Intérprete | `estadoAntes`, respuesta del paciente |
+| Protocolo | `estadoTrasRegistro`, interpretación |
+| Auditor | propuesta del protocolo (VistaAuditor = VistaProtocolo + propuesta) |
+| Comunicación | propuesta del protocolo (`VistaComunicacion`), **no** del veredicto del auditor |
+
+Implementación (`pipelineTurno.js`): tras `ejecutarProtocolo` intento 0, `ejecutarAuditor` y `ejecutarComunicacion` en `Promise.all`. Si el auditor rechaza, la salida de comunicación del intento 0 no se usa; en reintento, comunicación se invoca de forma secuencial tras el auditor.
+
+---
+
 ## Trazabilidad
 
 - `estadoExamen` completo en memoria con `historial`.

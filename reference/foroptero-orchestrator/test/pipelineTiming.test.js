@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { crearTimingMs, finalizarTimingMs } from '../pipelineTurno.js';
 
 describe('pipeline timing', () => {
+  it('crearTimingMs incluye totalWallClock inicializado en 0', () => {
+    const timing = crearTimingMs();
+    assert.equal(timing.totalWallClock, 0);
+  });
+
   it('finalizarTimingMs suma agentes en total', () => {
     const timing = crearTimingMs();
     timing.interprete = 0;

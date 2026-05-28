@@ -27,8 +27,8 @@ El sistema conduce un examen de agudeza visual por voz. Un **agente de voz** (Op
 ┌────────┴──────────┐        ┌────────────────────────────────────┐
 │  Next.js :3000    │        │  Orquestador :3001                 │
 │  GET /api/session │        │  pipelineTurno.js                  │
-│  POST /api/responses       │  intérprete → protocolo → auditor  │
-│  (guardrails)     │        │    → comunicación                  │
+│  POST /api/responses       │  intérprete → protocolo →          │
+│  (guardrails)     │        │    (auditor ∥ comunicación)        │
 └───────────────────┘        │  ejecutarAcciones.js               │
                              │    → MQTT → foróptero + TV         │
                              └──────────────┬─────────────────────┘
@@ -56,7 +56,7 @@ flowchart TB
 
   subgraph Orch["Orquestador :3001"]
     TurnoAPI["POST /api/examen/turno"]
-    Pipeline["intérprete → protocolo\n→ auditor → comunicación"]
+    Pipeline["intérprete → protocolo\n→ auditor ∥ comunicación"]
     MQTT["MQTT foróptero + TV"]
     TurnoAPI --> Pipeline --> MQTT
   end
@@ -115,13 +115,15 @@ Servicio Express independiente. Responsabilidades:
 ```
 intérprete
   → registro de intento (servidor, tabla resultadosPorLogmar)
-    → protocolo (hasta 1 reintento con feedback del auditor)
-      → auditor (aprueba/rechaza propuesta del protocolo)
-        → comunicación
-          → ejecutarAcciones (MQTT)
+    → protocolo (intento 0)
+      → auditor ∥ comunicación  (paralelo si el auditor aprueba en intento 0)
+      → [si rechazo] protocolo (reintento) → auditor → comunicación (secuencial)
+        → ejecutarAcciones (MQTT)
 ```
 
-**Turno bootstrap (`modo: bootstrap`):** cuando el ojo activo no tiene `letraActual` ni `logmarActual`, el intérprete se omite y protocolo + auditor arrancan el ojo desde H@0.3.
+**Turno bootstrap (`modo: bootstrap`):** cuando el ojo activo no tiene `letraActual` ni `logmarActual`, el intérprete se omite; protocolo arranca el ojo desde H@0.3 y, tras protocolo (intento 0), auditor y comunicación corren en paralelo.
+
+Detalle de orquestación y métricas `timingMs` / `totalWallClock`: [ORQUESTADOR.md](./ORQUESTADOR.md#orquestación-y-latencia).
 
 | Archivo clave | Rol |
 |---------------|-----|

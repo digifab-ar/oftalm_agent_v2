@@ -190,7 +190,7 @@ El orquestador (`pipelineTurno.js`) calcula el modo **antes** del intérprete:
 | Modo | Disparador | Comportamiento |
 |------|------------|----------------|
 | `bootstrap` | Ojo activo con `letraActual`, `logmarActual` y `logmarFinal` en `null` | Inicio clínico del ojo (H@0.3, foróptero + TV). Intérprete omitido; frase del paciente solo se loguea. |
-| `respuesta` | Ojo ya inicializado | Flujo estándar intérprete → protocolo → auditor. |
+| `respuesta` | Ojo ya inicializado | intérprete → registro → protocolo → (auditor ∥ comunicación) → patch/MQTT. Ver [docs/ORQUESTADOR.md](../docs/ORQUESTADOR.md). |
 
 El modo viaja en el **user prompt** de cada agente (no en schemas). Los endpoints HTTP no cambian; el primer `POST /api/examen/turno` sin parámetros tras `/nuevo` ejecuta bootstrap automáticamente.
 

@@ -24,14 +24,15 @@ import {
 
 const MAX_REINTENTOS_PROTOCOLO = 1;
 
-/** @returns {{ interprete: number, protocolo: number, auditor: number, comunicacion: number, total: number }} */
+/** @returns {{ interprete: number, protocolo: number, auditor: number, comunicacion: number, total: number, totalWallClock: number }} */
 export function crearTimingMs() {
   return {
     interprete: 0,
     protocolo: 0,
     auditor: 0,
     comunicacion: 0,
-    total: 0
+    total: 0,
+    totalWallClock: 0
   };
 }
 
@@ -184,81 +185,210 @@ function fallbackBootstrap() {
   };
 }
 
-async function protocoloConAuditoria(
+async function ejecutarUnProtocolo(
   estadoTrasRegistro,
+  interpretacion,
+  modo,
+  feedbackAuditor,
+  timing,
+  llmPrompts,
+  intento
+) {
+  const vista = armarVistaProtocolo(
+    estadoTrasRegistro,
+    interpretacion,
+    modo,
+    feedbackAuditor
+  );
+  if (llmPrompts) {
+    pushIntentoPrompt(
+      llmPrompts,
+      'protocolo',
+      intento,
+      construirUserProtocolo(vista),
+      vista
+    );
+  }
+  const { result, ms } = await medirMs(() =>
+    ejecutarProtocolo(vista, { modo })
+  );
+  timing.protocolo += ms;
+  return result;
+}
+
+async function ejecutarUnAuditor(
+  estadoTrasRegistro,
+  interpretacion,
+  propuesta,
+  modo,
+  registroIntento,
+  timing,
+  llmPrompts,
+  intento
+) {
+  const vista = armarVistaAuditor(
+    estadoTrasRegistro,
+    interpretacion,
+    propuesta,
+    modo,
+    registroIntento
+  );
+  if (llmPrompts) {
+    pushIntentoPrompt(
+      llmPrompts,
+      'auditor',
+      intento,
+      construirUserAuditor(vista),
+      vista
+    );
+  }
+  const { result, ms } = await medirMs(() => ejecutarAuditor(vista, { modo }));
+  timing.auditor += ms;
+  return result;
+}
+
+/**
+ * Protocolo → auditor y comunicación en paralelo (intento 0); reintento secuencial si auditor rechaza.
+ */
+async function protocoloAuditoriaYComunicacion({
+  estadoTrasRegistro,
+  estadoAntes,
   interpretacion,
   modo,
   registroIntento,
   timing,
   llmPrompts
-) {
-  let feedbackAuditor = null;
-  const opciones = { modo };
-  const guardarPrompts = llmPrompts != null;
+}) {
+  const propuesta0 = await ejecutarUnProtocolo(
+    estadoTrasRegistro,
+    interpretacion,
+    modo,
+    null,
+    timing,
+    llmPrompts,
+    0
+  );
 
-  for (let intento = 0; intento <= MAX_REINTENTOS_PROTOCOLO; intento++) {
-    const vistaProtocolo = armarVistaProtocolo(
+  const huboCambioDispositivo0 =
+    Array.isArray(propuesta0.acciones) && propuesta0.acciones.length > 0;
+  const vistaCom0 = armarVistaComunicacion({
+    interpretacion,
+    propuestaProtocolo: propuesta0,
+    estadoTrasRegistro,
+    estadoAntes,
+    modo,
+    huboCambioDispositivo: huboCambioDispositivo0
+  });
+  if (llmPrompts) {
+    setPromptAgente(llmPrompts, 'comunicacion', {
+      invocado: true,
+      user: construirUserComunicacion(vistaCom0),
+      vista: vistaCom0
+    });
+  }
+
+  const [auditorRes0, commRes0] = await Promise.all([
+    ejecutarUnAuditor(
       estadoTrasRegistro,
       interpretacion,
+      propuesta0,
       modo,
-      feedbackAuditor
-    );
-    if (guardarPrompts) {
-      pushIntentoPrompt(
-        llmPrompts,
-        'protocolo',
-        intento,
-        construirUserProtocolo(vistaProtocolo),
-        vistaProtocolo
-      );
-    }
-    const protocolo = await medirMs(() =>
-      ejecutarProtocolo(vistaProtocolo, opciones)
-    );
-    timing.protocolo += protocolo.ms;
-    const propuesta = protocolo.result;
+      registroIntento,
+      timing,
+      llmPrompts,
+      0
+    ),
+    medirMs(() => ejecutarComunicacion(vistaCom0, { modo }))
+  ]);
 
-    const vistaAuditor = armarVistaAuditor(
-      estadoTrasRegistro,
-      interpretacion,
-      propuesta,
-      modo,
-      registroIntento
-    );
-    if (guardarPrompts) {
-      pushIntentoPrompt(
-        llmPrompts,
-        'auditor',
-        intento,
-        construirUserAuditor(vistaAuditor),
-        vistaAuditor
-      );
-    }
-    const auditor = await medirMs(() =>
-      ejecutarAuditor(vistaAuditor, opciones)
-    );
-    timing.auditor += auditor.ms;
-    const auditoria = auditor.result;
-
-    if (auditoria.aprobado) {
-      return { propuesta, auditoria, reintentos: intento };
-    }
-
-    if (intento >= MAX_REINTENTOS_PROTOCOLO) {
-      return { propuesta, auditoria, reintentos: intento, falloAuditor: true };
-    }
-
-    feedbackAuditor = {
-      violaciones: auditoria.violaciones,
-      correccionSugerida: auditoria.correccionSugerida
+  if (auditorRes0.aprobado) {
+    return {
+      propuesta: propuesta0,
+      auditoria: auditorRes0,
+      comunicacion: commRes0.result,
+      comunicacionMs: commRes0.ms,
+      huboCambioDispositivo: huboCambioDispositivo0,
+      falloAuditor: false
     };
   }
 
-  return null;
+  const feedback = {
+    violaciones: auditorRes0.violaciones,
+    correccionSugerida: auditorRes0.correccionSugerida
+  };
+  const propuesta1 = await ejecutarUnProtocolo(
+    estadoTrasRegistro,
+    interpretacion,
+    modo,
+    feedback,
+    timing,
+    llmPrompts,
+    1
+  );
+  const auditorRes1 = await ejecutarUnAuditor(
+    estadoTrasRegistro,
+    interpretacion,
+    propuesta1,
+    modo,
+    registroIntento,
+    timing,
+    llmPrompts,
+    1
+  );
+
+  if (auditorRes1.aprobado) {
+    const huboCambioDispositivo1 =
+      Array.isArray(propuesta1.acciones) && propuesta1.acciones.length > 0;
+    const vistaCom1 = armarVistaComunicacion({
+      interpretacion,
+      propuestaProtocolo: propuesta1,
+      estadoTrasRegistro,
+      estadoAntes,
+      modo,
+      huboCambioDispositivo: huboCambioDispositivo1
+    });
+    if (llmPrompts) {
+      setPromptAgente(llmPrompts, 'comunicacion', {
+        invocado: true,
+        user: construirUserComunicacion(vistaCom1),
+        vista: vistaCom1
+      });
+    }
+    const commRes1 = await medirMs(() =>
+      ejecutarComunicacion(vistaCom1, { modo })
+    );
+    return {
+      propuesta: propuesta1,
+      auditoria: auditorRes1,
+      comunicacion: commRes1.result,
+      comunicacionMs: commRes1.ms,
+      huboCambioDispositivo: huboCambioDispositivo1,
+      falloAuditor: false
+    };
+  }
+
+  const fb =
+    modo === 'bootstrap'
+      ? fallbackBootstrap()
+      : fallbackAuditoria(interpretacion);
+  if (llmPrompts) {
+    setPromptAgente(llmPrompts, 'comunicacion', {
+      invocado: false,
+      motivo: fb.propuestaProtocolo.detalleEvento?.motivo ?? 'fallback_auditoria'
+    });
+  }
+  return {
+    propuesta: fb.propuestaProtocolo,
+    auditoria: auditorRes1,
+    comunicacion: fb.comunicacion,
+    comunicacionMs: 0,
+    huboCambioDispositivo: false,
+    falloAuditor: true
+  };
 }
 
 /**
- * Pipeline: intérprete → protocolo → auditor → [patch + MQTT] → comunicación.
+ * Pipeline: intérprete → protocolo → (auditor ∥ comunicación) → [patch + MQTT].
  */
 export async function procesarTurnoPipeline(
   respuestaPaciente = null,
@@ -295,6 +425,7 @@ export async function procesarTurnoPipeline(
 
   const timingMs = crearTimingMs();
   const llmPrompts = guardarPromptsEnHistorial() ? crearLlmPromptsTurno() : null;
+  const t0Pipeline = performance.now();
 
   try {
     if (modo === 'bootstrap') {
@@ -345,75 +476,32 @@ export async function procesarTurnoPipeline(
 
     const estadoTrasRegistro = snapshotEstadoExamen();
 
-    const resultadoProtocolo = await protocoloConAuditoria(
+    const resultado = await protocoloAuditoriaYComunicacion({
       estadoTrasRegistro,
-      traza.interpretacion,
+      estadoAntes,
+      interpretacion: traza.interpretacion,
       modo,
-      traza.registroIntento,
-      timingMs,
+      registroIntento: traza.registroIntento,
+      timing: timingMs,
       llmPrompts
-    );
+    });
 
-    if (!resultadoProtocolo) {
-      throw new Error('Protocolo sin resultado');
-    }
+    traza.propuestaProtocolo = resultado.propuesta;
+    traza.auditoria = resultado.auditoria;
+    traza.falloAuditor = resultado.falloAuditor;
+    traza.comunicacion = resultado.comunicacion;
+    timingMs.comunicacion = resultado.comunicacionMs;
 
-    traza.propuestaProtocolo = resultadoProtocolo.propuesta;
-    traza.auditoria = resultadoProtocolo.auditoria;
-    traza.falloAuditor = Boolean(resultadoProtocolo.falloAuditor);
-
-    let propuestaAplicar = traza.propuestaProtocolo;
-    let comunicacion;
-    let huboCambioDispositivo = false;
+    const propuestaAplicar = traza.propuestaProtocolo;
+    const comunicacion = traza.comunicacion;
 
     if (traza.falloAuditor) {
-      let fb;
-      if (modo === 'bootstrap') {
-        fb = fallbackBootstrap();
-      } else {
-        fb = fallbackAuditoria(traza.interpretacion);
-      }
-      propuestaAplicar = fb.propuestaProtocolo;
-      comunicacion = fb.comunicacion;
-      timingMs.comunicacion = 0;
-      if (llmPrompts) {
-        setPromptAgente(llmPrompts, 'comunicacion', {
-          invocado: false,
-          motivo: propuestaAplicar.detalleEvento?.motivo ?? 'fallback_auditoria'
-        });
-      }
       console.warn(
         `⚠️ Pipeline (${modo}): auditor rechazó tras reintentos; fallback ${
           propuestaAplicar.detalleEvento?.motivo ?? 'desconocido'
         }`
       );
-    } else {
-      huboCambioDispositivo =
-        Array.isArray(propuestaAplicar.acciones) &&
-        propuestaAplicar.acciones.length > 0;
-      const vistaComunicacion = armarVistaComunicacion({
-        interpretacion: traza.interpretacion,
-        propuestaProtocolo: propuestaAplicar,
-        estadoTrasRegistro,
-        estadoAntes,
-        modo,
-        huboCambioDispositivo
-      });
-      if (llmPrompts) {
-        setPromptAgente(llmPrompts, 'comunicacion', {
-          invocado: true,
-          user: construirUserComunicacion(vistaComunicacion),
-          vista: vistaComunicacion
-        });
-      }
-      const comm = await medirMs(() =>
-        ejecutarComunicacion(vistaComunicacion, { modo })
-      );
-      comunicacion = comm.result;
-      timingMs.comunicacion = comm.ms;
     }
-
-    traza.comunicacion = comunicacion;
     if (llmPrompts) {
       traza.llmPrompts = llmPrompts;
     }
@@ -422,9 +510,10 @@ export async function procesarTurnoPipeline(
     const accionesEjecutadas = await ejecutarAcciones(propuestaAplicar.acciones);
 
     const razonamientoInterno = armarRazonamientoInterno(traza, modo);
+    timingMs.totalWallClock = Math.round(performance.now() - t0Pipeline);
     finalizarTimingMs(timingMs);
     console.log(
-      `⏱ Pipeline (${modo}): total ${timingMs.total} ms ` +
+      `⏱ Pipeline (${modo}): wallClock=${timingMs.totalWallClock}ms cpu=${timingMs.total}ms ` +
         `(i=${timingMs.interprete} p=${timingMs.protocolo} ` +
         `a=${timingMs.auditor} c=${timingMs.comunicacion})`
     );
