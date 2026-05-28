@@ -15,7 +15,10 @@ import {
   VISTA_AUDITOR_SCHEMA,
   VISTA_COMUNICACION_SCHEMA
 } from '../agents/schemas.js';
-import { crearResultadosPorLogmarVacio } from '../lib/registroAgudeza.js';
+import {
+  aplicarRegistroIntento,
+  crearResultadosPorLogmarVacio
+} from '../lib/registroAgudeza.js';
 
 function estadoBase() {
   return {
@@ -84,6 +87,51 @@ describe('armarVistaProtocolo', () => {
       correcto: 2,
       incorrecto: 0
     });
+  });
+
+  it('contadoresLogmarActual en 0.0 tras correcta (BUG-007)', () => {
+    const estado = estadoBase();
+    estado.agudeza.L.logmarActual = 0;
+    estado.agudeza.L.letraActual = 'E';
+    estado.agudeza.L.letrasUsadas = ['H', 'O', 'T', 'E'];
+    aplicarRegistroIntento(estado.agudeza.L, 0, 'correcta');
+
+    const interpretacion = {
+      clasificacion: 'correcta',
+      letrasCandidatas: ['E'],
+      letraElegida: 'E',
+      notasInterprete: 'ok'
+    };
+    const vista = armarVistaProtocolo(estado, interpretacion, 'respuesta', null);
+    assert.deepEqual(vista.agudeza.L.contadoresLogmarActual, {
+      correcto: 1,
+      incorrecto: 0
+    });
+
+    const vistaAuditor = armarVistaAuditor(
+      estado,
+      interpretacion,
+      {
+        estadoPatch: {},
+        acciones: [],
+        evento: 'siguiente_optotipo',
+        detalleEvento: {},
+        razonamientoProtocolo: ''
+      },
+      'respuesta',
+      {
+        registrado: true,
+        ojo: 'L',
+        logmarEstimulo: 0,
+        letraEstimulo: 'E',
+        clasificacion: 'correcta',
+        duplicado: false
+      }
+    );
+    assert.deepEqual(
+      vistaAuditor.intentoRecienRegistrado.contadoresPostRegistro,
+      { correcto: 1, incorrecto: 0 }
+    );
   });
 
   it('bootstrap con feedbackAuditor', () => {

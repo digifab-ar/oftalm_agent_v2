@@ -1,4 +1,5 @@
 import { estimuloParaInterprete, resolverFaseDesdeEstado } from './estimulo.js';
+import { logmarAClave } from './registroAgudeza.js';
 import { validarContraSchema } from './validarSchema.js';
 import {
   VISTA_INTERPRETE_SCHEMA,
@@ -26,11 +27,6 @@ function deepMerge(target, source) {
     }
   }
   return out;
-}
-
-function logmarAClave(logmar) {
-  if (logmar == null) return null;
-  return String(Number(logmar));
 }
 
 function contadoresLogmarActual(agOjo) {

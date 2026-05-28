@@ -23,6 +23,13 @@ describe('logmarAClave', () => {
     assert.equal(logmarAClave(0.3), '0.3');
     assert.equal(logmarAClave('0.3'), '0.3');
   });
+
+  it('normaliza 0.0 como "0.0" (no "0")', () => {
+    assert.equal(logmarAClave(0), '0.0');
+    assert.equal(logmarAClave(0.0), '0.0');
+    assert.equal(logmarAClave('0'), '0.0');
+    assert.equal(logmarAClave('0.0'), '0.0');
+  });
 });
 
 describe('debeRegistrarIntento', () => {
