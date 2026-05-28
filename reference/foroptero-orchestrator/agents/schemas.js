@@ -211,15 +211,38 @@ const OJO_AGUDEZA_VISTA = {
   additionalProperties: false
 };
 
-const INTERPRETACION_VISTA = {
+/**
+ * Ojo activo (todos los campos) u ojo inactivo (solo logmarFinal).
+ * El validador no soporta oneOf; logmarFinal es el único required.
+ */
+const OJO_AGUDEZA_VISTA_FLEX = {
+  type: 'object',
+  properties: {
+    logmarActual: { type: ['number', 'null'] },
+    letraActual: { type: ['string', 'null'] },
+    letrasUsadas: { type: 'array', items: { type: 'string' } },
+    logmarFinal: { type: ['number', 'null'] },
+    contadoresLogmarActual: {
+      type: ['object', 'null'],
+      properties: {
+        correcto: { type: 'number' },
+        incorrecto: { type: 'number' }
+      },
+      required: ['correcto', 'incorrecto'],
+      additionalProperties: false
+    }
+  },
+  required: ['logmarFinal'],
+  additionalProperties: false
+};
+
+const INTERPRETACION_PROTOCOLO_VISTA = {
   type: 'object',
   properties: {
     clasificacion: { type: 'string', enum: CLASIFICACION_ENUM },
-    letraElegida: { type: ['string', 'null'] },
-    letrasCandidatas: { type: 'array', items: { type: 'string' } },
-    notasInterprete: { type: 'string' }
+    letraElegida: { type: ['string', 'null'] }
   },
-  required: ['clasificacion', 'letraElegida', 'letrasCandidatas', 'notasInterprete'],
+  required: ['clasificacion', 'letraElegida'],
   additionalProperties: false
 };
 
@@ -241,13 +264,10 @@ export const VISTA_INTERPRETE_SCHEMA = {
     estimulo: {
       type: 'object',
       properties: {
-        tipo: { type: 'string' },
-        letraActual: { type: ['string', 'null'] },
-        logmarActual: { type: ['number', 'null'] },
-        ojo: { type: 'string', enum: ['R', 'L'] }
+        letraActual: { type: ['string', 'null'] }
       },
-      required: ['tipo', 'letraActual', 'logmarActual', 'ojo'],
-      additionalProperties: true
+      required: ['letraActual'],
+      additionalProperties: false
     },
     respuestaPaciente: { type: ['string', 'null'] },
     confianza: { type: 'number' }
@@ -265,8 +285,8 @@ export const VISTA_PROTOCOLO_SCHEMA = {
     agudeza: {
       type: 'object',
       properties: {
-        R: OJO_AGUDEZA_VISTA,
-        L: OJO_AGUDEZA_VISTA
+        R: OJO_AGUDEZA_VISTA_FLEX,
+        L: OJO_AGUDEZA_VISTA_FLEX
       },
       required: ['R', 'L'],
       additionalProperties: false
@@ -277,7 +297,7 @@ export const VISTA_PROTOCOLO_SCHEMA = {
       required: ['R', 'L'],
       additionalProperties: false
     },
-    interpretacion: INTERPRETACION_VISTA,
+    interpretacion: INTERPRETACION_PROTOCOLO_VISTA,
     feedbackAuditor: {
       type: ['object', 'null'],
       properties: FEEDBACK_AUDITOR_VISTA.properties,
@@ -335,8 +355,8 @@ export const VISTA_AUDITOR_SCHEMA = {
     agudeza: {
       type: 'object',
       properties: {
-        R: OJO_AGUDEZA_VISTA,
-        L: OJO_AGUDEZA_VISTA
+        R: OJO_AGUDEZA_VISTA_FLEX,
+        L: OJO_AGUDEZA_VISTA_FLEX
       },
       required: ['R', 'L'],
       additionalProperties: false
@@ -347,7 +367,7 @@ export const VISTA_AUDITOR_SCHEMA = {
       required: ['R', 'L'],
       additionalProperties: false
     },
-    interpretacion: INTERPRETACION_VISTA,
+    interpretacion: INTERPRETACION_PROTOCOLO_VISTA,
     intentoRecienRegistrado: {
       type: ['object', 'null'],
       properties: INTENTO_RECIEN_REGISTRADO.properties,
@@ -400,7 +420,6 @@ export const VISTA_COMUNICACION_SCHEMA = {
   type: 'object',
   properties: {
     fase: { type: 'string' },
-    modo: { type: 'string', enum: ['respuesta', 'bootstrap'] },
     evento: { type: 'string', enum: EVENTO_ENUM },
     detalleEvento: { type: 'object', additionalProperties: true },
     huboCambioDispositivo: { type: 'boolean' },
@@ -430,7 +449,6 @@ export const VISTA_COMUNICACION_SCHEMA = {
   },
   required: [
     'fase',
-    'modo',
     'evento',
     'detalleEvento',
     'huboCambioDispositivo',

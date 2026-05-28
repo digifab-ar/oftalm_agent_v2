@@ -18,7 +18,7 @@ Ver también: [docs/API.md — Vistas de agentes](../../../docs/API.md#5-vistas-
 
 ## VistaInterprete
 
-Campos: `fase`, `modo`, `estimulo` (`tipo`, `letraActual`, `logmarActual`, `ojo`), `respuestaPaciente`, `confianza`.
+Campos: `fase`, `modo`, `estimulo` (`letraActual`), `respuestaPaciente`, `confianza`.
 
 Derivación: `estimulo` desde `estimuloParaInterprete(estado)`. Bootstrap no invoca LLM.
 
@@ -26,7 +26,7 @@ Derivación: `estimulo` desde `estimuloParaInterprete(estado)`. Bootstrap no inv
 
 ## VistaProtocolo
 
-Campos: `fase`, `modo`, `ojoActual`, `agudeza.{R|L}` (operativos + `contadoresLogmarActual`), `rx`, `interpretacion`, `feedbackAuditor` (null o `{ violaciones, correccionSugerida }` en reintento).
+Campos: `fase`, `modo`, `ojoActual`, `agudeza` (ojo activo: operativos + `contadoresLogmarActual`; ojo inactivo: solo `logmarFinal`), `rx`, `interpretacion` (`clasificacion`, `letraElegida`), `feedbackAuditor` (null o `{ violaciones, correccionSugerida }` en reintento).
 
 `contadoresLogmarActual`: extraído de `resultadosPorLogmar[String(logmarActual)]` del ojo; `null` si `logmarActual == null`.
 
@@ -48,7 +48,7 @@ Ante `cierre_ojo_R_e_inicio_L`, el auditor comprueba primero si `estadoAntes.agu
 
 ## VistaComunicacion
 
-Campos: `fase`, `modo`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuatro flags booleanos, `interpretacion` (resumida), `estadoResumido`.
+Campos: `fase`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuatro flags booleanos, `interpretacion` (`clasificacion`, `notasInterprete`), `estadoResumido`.
 
 | Flag | Derivación |
 |------|------------|

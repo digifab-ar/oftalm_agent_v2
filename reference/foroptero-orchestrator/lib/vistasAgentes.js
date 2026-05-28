@@ -52,14 +52,26 @@ function proyectarOjoAgudeza(agOjo) {
   };
 }
 
-function interpretacionVista(interpretacion) {
+/** Protocolo y auditor: solo campos que condicionan la decisión clínica. */
+function interpretacionVistaProtocolo(interpretacion) {
   return {
     clasificacion: interpretacion?.clasificacion ?? 'continuacion',
-    letraElegida: interpretacion?.letraElegida ?? null,
-    letrasCandidatas: Array.isArray(interpretacion?.letrasCandidatas)
-      ? [...interpretacion.letrasCandidatas]
-      : [],
-    notasInterprete: String(interpretacion?.notasInterprete ?? '')
+    letraElegida: interpretacion?.letraElegida ?? null
+  };
+}
+
+function proyectarOjoInactivo(agOjo) {
+  return {
+    logmarFinal: agOjo?.logmarFinal ?? null
+  };
+}
+
+function agudezaVistaMinima(estado) {
+  const ojo = estado.ojoActual;
+  const otro = ojo === 'R' ? 'L' : 'R';
+  return {
+    [ojo]: proyectarOjoAgudeza(estado.agudeza?.[ojo]),
+    [otro]: proyectarOjoInactivo(estado.agudeza?.[otro])
   };
 }
 
@@ -70,12 +82,6 @@ function rxVista(estado) {
   };
 }
 
-function agudezaVista(estado) {
-  return {
-    R: proyectarOjoAgudeza(estado.agudeza?.R),
-    L: proyectarOjoAgudeza(estado.agudeza?.L)
-  };
-}
 
 function validarVista(schema, vista, nombre) {
   validarContraSchema(schema, vista, nombre);
@@ -99,10 +105,7 @@ export function armarVistaInterprete(
     fase: resolverFaseDesdeEstado(estado),
     modo,
     estimulo: {
-      tipo: estimulo.tipo ?? 'letra_logmar',
-      letraActual: estimulo.letraActual ?? null,
-      logmarActual: estimulo.logmarActual ?? null,
-      ojo: estimulo.ojo ?? estado.ojoActual
+      letraActual: estimulo.letraActual ?? null
     },
     respuestaPaciente:
       respuestaPaciente != null && String(respuestaPaciente).trim() !== ''
@@ -149,9 +152,9 @@ export function armarVistaProtocolo(
     fase: resolverFaseDesdeEstado(estadoTrasRegistro),
     modo,
     ojoActual: estadoTrasRegistro.ojoActual,
-    agudeza: agudezaVista(estadoTrasRegistro),
+    agudeza: agudezaVistaMinima(estadoTrasRegistro),
     rx: rxVista(estadoTrasRegistro),
-    interpretacion: interpretacionVista(interpretacion),
+    interpretacion: interpretacionVistaProtocolo(interpretacion),
     feedbackAuditor: feedback
   };
   return validarVista(VISTA_PROTOCOLO_SCHEMA, vista, 'VistaProtocolo');
@@ -208,9 +211,9 @@ export function armarVistaAuditor(
     fase: resolverFaseDesdeEstado(estadoTrasRegistro),
     modo,
     ojoActual: estadoTrasRegistro.ojoActual,
-    agudeza: agudezaVista(estadoTrasRegistro),
+    agudeza: agudezaVistaMinima(estadoTrasRegistro),
     rx: rxVista(estadoTrasRegistro),
-    interpretacion: interpretacionVista(interpretacion),
+    interpretacion: interpretacionVistaProtocolo(interpretacion),
     intentoRecienRegistrado,
     propuestaProtocolo: {
       estadoPatch: propuestaProtocolo?.estadoPatch ?? {},
@@ -257,7 +260,6 @@ export function armarVistaComunicacion({
 
   const vista = {
     fase: resolverFaseDesdeEstado(estadoTrasRegistro),
-    modo,
     evento: propuestaProtocolo?.evento,
     detalleEvento: propuestaProtocolo?.detalleEvento ?? {},
     huboCambioDispositivo: Boolean(huboCambioDispositivo),

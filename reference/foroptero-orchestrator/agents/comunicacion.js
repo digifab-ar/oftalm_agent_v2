@@ -11,8 +11,6 @@ const CONTEXTO_VOZ_VALIDOS = new Set([
 export function construirUser(vista) {
   return [
     '## Vista del turno (VistaComunicacion)',
-    'Usá los flags pre-computados para `contextoVoz` (tabla en comunicacion-comun.md).',
-    '**No** derivar `contextoVoz` del `evento` ni de razonamientos previos.',
     '```json',
     JSON.stringify(vista, null, 2),
     '```',

@@ -54,11 +54,6 @@ export function construirUser(vista) {
       '## Sin respuesta del paciente en este turno',
       'Devolvé clasificacion: continuacion.'
     );
-  } else {
-    partes.push(
-      '## Confianza de captura (0-1)',
-      String(vista.confianza)
-    );
   }
 
   partes.push('Clasificá y devolvé el JSON del schema.');

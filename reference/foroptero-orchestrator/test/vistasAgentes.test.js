@@ -56,7 +56,9 @@ describe('armarVistaInterprete', () => {
     assert.equal(vista.fase, 'agudeza');
     assert.equal(vista.modo, 'respuesta');
     assert.equal(vista.estimulo.letraActual, 'H');
-    assert.equal(vista.estimulo.ojo, 'L');
+    assert.equal('logmarActual' in vista.estimulo, false);
+    assert.equal('ojo' in vista.estimulo, false);
+    assert.equal('tipo' in vista.estimulo, false);
     assert.equal(vista.respuestaPaciente, 'veo una h');
     assert.equal(vistaContieneCampoProhibido(vista), false);
   });
@@ -86,6 +88,12 @@ describe('armarVistaProtocolo', () => {
     assert.deepEqual(vista.agudeza.L.contadoresLogmarActual, {
       correcto: 2,
       incorrecto: 0
+    });
+    assert.equal(vista.agudeza.R.logmarFinal, 0.2);
+    assert.equal('logmarActual' in vista.agudeza.R, false);
+    assert.deepEqual(vista.interpretacion, {
+      clasificacion: 'correcta',
+      letraElegida: 'H'
     });
   });
 
@@ -210,6 +218,7 @@ describe('armarVistaComunicacion', () => {
       huboCambioDispositivo: true
     });
     assert.equal(vista.esCambioDeOjo, true);
+    assert.equal('modo' in vista, false);
   });
 
   it('esPrimerTurnoExamen con historial vacío', () => {
@@ -249,7 +258,7 @@ describe('validación schema vistas', () => {
       validarContraSchema(VISTA_INTERPRETE_SCHEMA, {
         fase: 'agudeza',
         modo: 'respuesta',
-        estimulo: { tipo: 'x', letraActual: null, logmarActual: null, ojo: 'R' },
+        estimulo: { letraActual: null },
         respuestaPaciente: null,
         confianza: 1,
         historial: []

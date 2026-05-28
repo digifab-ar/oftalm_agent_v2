@@ -94,7 +94,7 @@ Activado cuando `letraActual == null && logmarActual == null` para el ojo activo
 
 ### Intérprete
 
-- **Input (VistaInterprete):** `fase`, `modo`, `estimulo` (tipo, letraActual, logmarActual, ojo), `respuestaPaciente`, `confianza`
+- **Input (VistaInterprete):** `fase`, `modo`, `estimulo` (letraActual), `respuestaPaciente`, `confianza`
 - **Output:** `clasificacion` (correcta | incorrecta | no_ve | ambigua), `letrasCandidatas`, `letraElegida`, `notasInterprete`
 - **Regla clave:** no clasifica en bootstrap; en respuesta evalúa fonética Sloan (C/D/F/H/K/N/O/R/S/T/V/Z).
 
@@ -112,7 +112,7 @@ Activado cuando `letraActual == null && logmarActual == null` para el ojo activo
 
 ### Comunicación
 
-- **Input (VistaComunicacion):** `fase`, `modo`, `evento`, `detalleEvento`, `huboCambioDispositivo`, flags booleanos, `interpretacion` resumida, `estadoResumido`
+- **Input (VistaComunicacion):** `fase`, `evento`, `detalleEvento`, `huboCambioDispositivo`, flags booleanos, `interpretacion` (`clasificacion`, `notasInterprete`), `estadoResumido`
 - **Output:** `mensajesPaciente[]`, `contextoVoz` (esperar_respuesta | continuar_sin_respuesta), `razonamientoComunicacion`
 - **Regla clave:** redacta el mensaje al paciente en español argentino; adapta tono según flags (`esPrimerTurnoExamen`, `esCambioDeOjo`, `esExamenFinalizado`, etc.).
 

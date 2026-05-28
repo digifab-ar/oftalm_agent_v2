@@ -11,7 +11,7 @@ import {
 const vistaInterpreteValida = {
   fase: 'agudeza',
   modo: 'respuesta',
-  estimulo: { tipo: 'letra_logmar', letraActual: 'H', logmarActual: 0.3, ojo: 'L' },
+  estimulo: { letraActual: 'H' },
   respuestaPaciente: 'h',
   confianza: 0.9
 };
@@ -28,16 +28,17 @@ const vistaProtocoloValida = {
   fase: 'agudeza',
   modo: 'respuesta',
   ojoActual: 'L',
-  agudeza: { R: { ...ojoVista, logmarActual: null, contadoresLogmarActual: null }, L: ojoVista },
+  agudeza: {
+    R: { logmarFinal: 0.2 },
+    L: ojoVista
+  },
   rx: {
     R: { esfera: 0.75, cilindro: -1.75, angulo: 60 },
     L: { esfera: 2.75, cilindro: 0, angulo: 0 }
   },
   interpretacion: {
     clasificacion: 'correcta',
-    letraElegida: 'H',
-    letrasCandidatas: ['H'],
-    notasInterprete: 'ok'
+    letraElegida: 'H'
   },
   feedbackAuditor: null
 };
@@ -84,7 +85,6 @@ describe('VISTA_*_SCHEMA ejemplos válidos', () => {
     assert.doesNotThrow(() =>
       validarContraSchema(VISTA_COMUNICACION_SCHEMA, {
         fase: 'agudeza',
-        modo: 'respuesta',
         evento: 'siguiente_optotipo',
         detalleEvento: {},
         huboCambioDispositivo: true,
@@ -114,11 +114,11 @@ describe('VISTA_*_SCHEMA ejemplos inválidos', () => {
     );
   });
 
-  it('VistaComunicacion modo inválido', () => {
+  it('VistaComunicacion con campo extra rechazado', () => {
     assert.throws(() =>
       validarContraSchema(VISTA_COMUNICACION_SCHEMA, {
-        ...vistaProtocoloValida,
-        modo: 'invalido',
+        fase: 'agudeza',
+        modo: 'respuesta',
         evento: 'siguiente_optotipo',
         detalleEvento: {},
         huboCambioDispositivo: false,

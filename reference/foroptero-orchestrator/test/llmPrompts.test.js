@@ -46,25 +46,30 @@ describe('llmPrompts', () => {
 });
 
 describe('construirUserProtocolo', () => {
-  it('incluye VistaProtocolo y reglas inline', () => {
+  it('incluye VistaProtocolo JSON sin header duplicado', () => {
     const vista = {
       fase: 'agudeza',
       modo: 'respuesta',
       ojoActual: 'L',
       agudeza: {
-        R: { logmarFinal: 0.2, contadoresLogmarActual: null },
+        R: { logmarFinal: 0.2 },
         L: {
           logmarActual: 0,
+          letraActual: 'E',
+          letrasUsadas: ['H'],
+          logmarFinal: null,
           contadoresLogmarActual: { correcto: 2, incorrecto: 0 }
         }
       },
       rx: { R: {}, L: {} },
-      interpretacion: { clasificacion: 'correcta' },
+      interpretacion: { clasificacion: 'correcta', letraElegida: 'E' },
       feedbackAuditor: null
     };
     const user = construirUserProtocolo(vista);
     assert.match(user, /VistaProtocolo/);
     assert.match(user, /"correcto": 2/);
     assert.match(user, /Aplicá el protocolo/);
+    assert.doesNotMatch(user, /BUG-005/);
+    assert.doesNotMatch(user, /ya incluyen/);
   });
 });

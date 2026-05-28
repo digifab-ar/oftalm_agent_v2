@@ -5,9 +5,6 @@ import { AUDITOR_SCHEMA } from './schemas.js';
 export function construirUser(vista) {
   return [
     '## Vista del turno (VistaAuditor)',
-    'El estado clínico está en la vista; **no** hay historial ni razonamientos de turnos previos.',
-    'Validá `propuestaProtocolo.letrasUsadasResultantes[ojoActual]` contra `agudeza[ojoActual].letrasUsadas`.',
-    'Para correcta, citá `intentoRecienRegistrado.contadoresPostRegistro` o `agudeza[ojoActual].contadoresLogmarActual`.',
     '```json',
     JSON.stringify(vista, null, 2),
     '```',

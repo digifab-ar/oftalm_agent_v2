@@ -5,10 +5,6 @@ import { PROTOCOLO_SCHEMA } from './schemas.js';
 export function construirUser(vista) {
   const partes = [
     '## Vista del turno (VistaProtocolo)',
-    'Los contadores en `agudeza[ojoActual].contadoresLogmarActual` **ya incluyen** este turno si la clasificación fue correcta/incorrecta/no_ve.',
-    '**Prohibido** incluir `resultadosPorLogmar` ni `aciertosPorLogmar` en `estadoPatch`.',
-    'En plantillas B/C: `letraActual` debe ser **∉** `letrasUsadas` pre-patch y el array del patch debe **extender** las previas (auto-verificación ítems 7–8; el auditor rechaza BUG-005 si no).',
-    'Si `agudeza.R.logmarFinal != null`, está prohibido `cierre_ojo_R_e_inicio_L` (BUG-006); en L con `c==1` usá Plantilla B.',
     '```json',
     JSON.stringify(vista, null, 2),
     '```'
