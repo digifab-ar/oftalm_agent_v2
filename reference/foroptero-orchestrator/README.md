@@ -14,6 +14,8 @@ Por turno (`modo: respuesta`): **intérprete** → **registro de intento** (serv
 
 El protocolo **no escribe contadores** en el patch; lee la tabla ya actualizada. Ver [../PLAN_TABLA_RESULTADOS_AGUDEZA.md](../PLAN_TABLA_RESULTADOS_AGUDEZA.md).
 
+**QA — user prompts:** cada turno en `historial[]` puede incluir `llmPrompts` (user + vista JSON por agente). Visible en `GET /api/examen/detalle` y en `reference_framer/ForopteroControl.tsx`. Desactivar con `PIPELINE_GUARDAR_PROMPTS=false`. Ver [../../docs/API.md](../../docs/API.md).
+
 ### Turno bootstrap
 
 Cuando el ojo activo aún no tiene `letraActual` ni `logmarActual` (estado vacío tras `POST /api/examen/nuevo`), el pipeline entra en **`modo: bootstrap`**:

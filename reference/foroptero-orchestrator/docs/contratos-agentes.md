@@ -66,6 +66,7 @@ Campos: `fase`, `modo`, `evento`, `detalleEvento`, `huboCambioDispositivo`, cuat
 - `estadoExamen` completo en memoria con `historial`.
 - `registrarTurnoHistorial`, `generarRegistroCsv`, `/api/examen/detalle` usan estado completo, no vistas.
 - Introspección/debug: `snapshotEstadoExamen()` (no usar en `agents/`).
+- **User prompts LLM:** por turno, `historial[].llmPrompts` (opción B, `lib/llmPrompts.js` + `pipelineTurno.js`). Misma cadena que `construirUser()` en cada `agents/*.js`; no persiste system prompt. Control: `PIPELINE_GUARDAR_PROMPTS`.
 
 ---
 

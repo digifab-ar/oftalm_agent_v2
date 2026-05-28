@@ -12,6 +12,7 @@
     "test:registro": "node --test lib/registroAgudeza.test.js",
     "test:vistas": "node --test test/vistasAgentes.test.js test/schemasVistas.test.js",
     "test:timing": "node --test test/pipelineTiming.test.js",
+    "test:prompts": "node --test test/llmPrompts.test.js",
     "test:knowledge": "node --test test/knowledgeLoader.test.js"
   },
   "dependencies": {

@@ -2,7 +2,7 @@ import { cargarSystemAgente } from '../lib/knowledge.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { PROTOCOLO_SCHEMA } from './schemas.js';
 
-function construirUser(vista) {
+export function construirUser(vista) {
   const partes = [
     '## Vista del turno (VistaProtocolo)',
     'Los contadores en `agudeza[ojoActual].contadoresLogmarActual` **ya incluyen** este turno si la clasificación fue correcta/incorrecta/no_ve.',

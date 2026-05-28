@@ -41,7 +41,7 @@ export function corregirInterpretacionAgudeza(parsed) {
   };
 }
 
-function construirUser(vista) {
+export function construirUser(vista) {
   const partes = [
     '## Vista del turno (VistaInterprete)',
     '```json',

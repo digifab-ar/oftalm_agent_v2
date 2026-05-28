@@ -11,10 +11,16 @@ import {
   armarVistaAuditor,
   armarVistaComunicacion
 } from './lib/vistasAgentes.js';
-import { ejecutarInterprete } from './agents/interprete.js';
-import { ejecutarProtocolo } from './agents/protocolo.js';
-import { ejecutarAuditor } from './agents/auditor.js';
-import { ejecutarComunicacion } from './agents/comunicacion.js';
+import { ejecutarInterprete, construirUser as construirUserInterprete } from './agents/interprete.js';
+import { ejecutarProtocolo, construirUser as construirUserProtocolo } from './agents/protocolo.js';
+import { ejecutarAuditor, construirUser as construirUserAuditor } from './agents/auditor.js';
+import { ejecutarComunicacion, construirUser as construirUserComunicacion } from './agents/comunicacion.js';
+import {
+  guardarPromptsEnHistorial,
+  crearLlmPromptsTurno,
+  pushIntentoPrompt,
+  setPromptAgente
+} from './lib/llmPrompts.js';
 
 const MAX_REINTENTOS_PROTOCOLO = 1;
 
@@ -183,10 +189,12 @@ async function protocoloConAuditoria(
   interpretacion,
   modo,
   registroIntento,
-  timing
+  timing,
+  llmPrompts
 ) {
   let feedbackAuditor = null;
   const opciones = { modo };
+  const guardarPrompts = llmPrompts != null;
 
   for (let intento = 0; intento <= MAX_REINTENTOS_PROTOCOLO; intento++) {
     const vistaProtocolo = armarVistaProtocolo(
@@ -195,6 +203,15 @@ async function protocoloConAuditoria(
       modo,
       feedbackAuditor
     );
+    if (guardarPrompts) {
+      pushIntentoPrompt(
+        llmPrompts,
+        'protocolo',
+        intento,
+        construirUserProtocolo(vistaProtocolo),
+        vistaProtocolo
+      );
+    }
     const protocolo = await medirMs(() =>
       ejecutarProtocolo(vistaProtocolo, opciones)
     );
@@ -208,6 +225,15 @@ async function protocoloConAuditoria(
       modo,
       registroIntento
     );
+    if (guardarPrompts) {
+      pushIntentoPrompt(
+        llmPrompts,
+        'auditor',
+        intento,
+        construirUserAuditor(vistaAuditor),
+        vistaAuditor
+      );
+    }
     const auditor = await medirMs(() =>
       ejecutarAuditor(vistaAuditor, opciones)
     );
@@ -268,11 +294,18 @@ export async function procesarTurnoPipeline(
   };
 
   const timingMs = crearTimingMs();
+  const llmPrompts = guardarPromptsEnHistorial() ? crearLlmPromptsTurno() : null;
 
   try {
     if (modo === 'bootstrap') {
       traza.interpretacion = interpretacionBootstrap();
       timingMs.interprete = 0;
+      if (llmPrompts) {
+        setPromptAgente(llmPrompts, 'interprete', {
+          invocado: false,
+          motivo: 'bootstrap'
+        });
+      }
     } else {
       const vistaInterprete = armarVistaInterprete(
         estadoAntes,
@@ -280,6 +313,13 @@ export async function procesarTurnoPipeline(
         conf,
         modo
       );
+      if (llmPrompts) {
+        setPromptAgente(llmPrompts, 'interprete', {
+          invocado: true,
+          user: construirUserInterprete(vistaInterprete),
+          vista: vistaInterprete
+        });
+      }
       const interprete = await medirMs(() =>
         ejecutarInterprete(vistaInterprete, { modo })
       );
@@ -310,7 +350,8 @@ export async function procesarTurnoPipeline(
       traza.interpretacion,
       modo,
       traza.registroIntento,
-      timingMs
+      timingMs,
+      llmPrompts
     );
 
     if (!resultadoProtocolo) {
@@ -335,6 +376,12 @@ export async function procesarTurnoPipeline(
       propuestaAplicar = fb.propuestaProtocolo;
       comunicacion = fb.comunicacion;
       timingMs.comunicacion = 0;
+      if (llmPrompts) {
+        setPromptAgente(llmPrompts, 'comunicacion', {
+          invocado: false,
+          motivo: propuestaAplicar.detalleEvento?.motivo ?? 'fallback_auditoria'
+        });
+      }
       console.warn(
         `⚠️ Pipeline (${modo}): auditor rechazó tras reintentos; fallback ${
           propuestaAplicar.detalleEvento?.motivo ?? 'desconocido'
@@ -352,6 +399,13 @@ export async function procesarTurnoPipeline(
         modo,
         huboCambioDispositivo
       });
+      if (llmPrompts) {
+        setPromptAgente(llmPrompts, 'comunicacion', {
+          invocado: true,
+          user: construirUserComunicacion(vistaComunicacion),
+          vista: vistaComunicacion
+        });
+      }
       const comm = await medirMs(() =>
         ejecutarComunicacion(vistaComunicacion, { modo })
       );
@@ -360,6 +414,9 @@ export async function procesarTurnoPipeline(
     }
 
     traza.comunicacion = comunicacion;
+    if (llmPrompts) {
+      traza.llmPrompts = llmPrompts;
+    }
 
     aplicarEstadoPatch(propuestaAplicar.estadoPatch);
     const accionesEjecutadas = await ejecutarAcciones(propuestaAplicar.acciones);
@@ -389,7 +446,8 @@ export async function procesarTurnoPipeline(
       estadoPatch: propuestaAplicar.estadoPatch,
       pipeline: true,
       modoTurno: modo,
-      timingMs
+      timingMs,
+      ...(llmPrompts ? { llmPrompts } : {})
     });
 
     return {

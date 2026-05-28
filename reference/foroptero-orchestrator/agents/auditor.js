@@ -2,7 +2,7 @@ import { cargarSystemAgente } from '../lib/knowledge.js';
 import { llamarAgenteJson } from '../lib/llmClient.js';
 import { AUDITOR_SCHEMA } from './schemas.js';
 
-function construirUser(vista) {
+export function construirUser(vista) {
   return [
     '## Vista del turno (VistaAuditor)',
     'El estado clínico está en la vista; **no** hay historial ni razonamientos de turnos previos.',

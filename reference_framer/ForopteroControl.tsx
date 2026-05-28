@@ -33,9 +33,30 @@ type TurnoTimingMs = {
     comunicacion: number
 }
 
+type PromptIntento = {
+    intento: number
+    user: string
+    vista?: Record<string, unknown>
+}
+
+type AgentePromptRegistro = {
+    invocado: boolean
+    motivo?: string
+    user?: string
+    vista?: Record<string, unknown>
+}
+
+type LlmPromptsTurno = {
+    interprete?: AgentePromptRegistro
+    protocolo?: { intentos: PromptIntento[] }
+    auditor?: { intentos: PromptIntento[] }
+    comunicacion?: AgentePromptRegistro
+}
+
 type TurnoHistorial = {
     ts?: string
     timingMs?: TurnoTimingMs
+    llmPrompts?: LlmPromptsTurno
     respuestaPaciente?: string | null
     confianza?: number
     modoTurno?: string
@@ -226,6 +247,112 @@ const preRazonamiento = {
     lineHeight: 1.45,
 }
 
+const detailsPrompt = {
+    marginTop: 6,
+    fontSize: 11,
+} as const
+
+const summaryPrompt = {
+    cursor: "pointer" as const,
+    fontWeight: 600,
+    color: "#374151",
+}
+
+function PromptUserPre({ user }: { user: string }) {
+    return <pre style={preRazonamiento}>{user}</pre>
+}
+
+function PromptAgenteSimple({
+    titulo,
+    registro,
+}: {
+    titulo: string
+    registro?: AgentePromptRegistro
+}) {
+    if (!registro) return null
+    return (
+        <details style={detailsPrompt}>
+            <summary style={summaryPrompt}>{titulo}</summary>
+            {!registro.invocado ? (
+                <div style={{ marginTop: 6, color: "#6b7280" }}>
+                    Sin LLM — {registro.motivo ?? "no invocado"}
+                </div>
+            ) : registro.user ? (
+                <PromptUserPre user={registro.user} />
+            ) : (
+                <div style={{ marginTop: 6, color: "#9ca3af" }}>—</div>
+            )}
+        </details>
+    )
+}
+
+function PromptAgenteIntentos({
+    titulo,
+    bloque,
+}: {
+    titulo: string
+    bloque?: { intentos: PromptIntento[] }
+}) {
+    if (!bloque?.intentos?.length) return null
+    return (
+        <details style={detailsPrompt}>
+            <summary style={summaryPrompt}>
+                {titulo} ({bloque.intentos.length} intento
+                {bloque.intentos.length === 1 ? "" : "s"})
+            </summary>
+            {bloque.intentos.map((item) => (
+                <details
+                    key={`${titulo}-${item.intento}`}
+                    style={{ ...detailsPrompt, marginLeft: 8 }}
+                >
+                    <summary style={summaryPrompt}>
+                        Intento {item.intento + 1}
+                    </summary>
+                    <PromptUserPre user={item.user} />
+                </details>
+            ))}
+        </details>
+    )
+}
+
+function TurnoLlmPrompts({ prompts }: { prompts?: LlmPromptsTurno }) {
+    if (!prompts) {
+        return (
+            <div
+                style={{
+                    marginTop: 10,
+                    fontSize: 11,
+                    color: "#9ca3af",
+                    fontStyle: "italic",
+                }}
+            >
+                User prompts no disponibles (turno anterior al deploy o
+                PIPELINE_GUARDAR_PROMPTS=false).
+            </div>
+        )
+    }
+    return (
+        <div
+            style={{
+                marginTop: 10,
+                padding: 10,
+                background: "#eff6ff",
+                borderRadius: 8,
+                border: "1px solid #bfdbfe",
+            }}
+        >
+            <strong style={{ fontSize: 12 }}>User prompts (LLM)</strong>
+            <PromptAgenteSimple titulo="Intérprete" registro={prompts.interprete} />
+            <PromptAgenteIntentos titulo="Protocolo" bloque={prompts.protocolo} />
+            <PromptAgenteIntentos titulo="Auditor" bloque={prompts.auditor} />
+            <PromptAgenteSimple
+                titulo="Comunicación"
+                registro={prompts.comunicacion}
+            />
+        </div>
+    )
+}
+
 function TurnoQACard({
     turno,
     indice,
@@ -326,6 +453,8 @@ function TurnoQACard({
                     <pre style={preRazonamiento}>{turno.razonamientoInterno}</pre>
                 </div>
             )}
+
+            <TurnoLlmPrompts prompts={turno.llmPrompts} />
 
             <div style={seccionAgente}>
                 <strong>

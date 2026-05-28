@@ -8,7 +8,7 @@ const CONTEXTO_VOZ_VALIDOS = new Set([
   'continuar_sin_respuesta'
 ]);
 
-function construirUser(vista) {
+export function construirUser(vista) {
   return [
     '## Vista del turno (VistaComunicacion)',
     'Usá los flags pre-computados para `contextoVoz` (tabla en comunicacion-comun.md).',

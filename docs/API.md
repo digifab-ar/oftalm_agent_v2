@@ -136,7 +136,48 @@ Resumen del estado actual del examen (campos principales, sin historial).
 
 Estado completo con historial de turnos. Útil para debugging y QA.
 
-**Response (200):** `{ ok, estado }` con el estado completo incluyendo `historial[]`, `intentosRegistrados[]`, `resultadosPorLogmar`, `timingMs` por turno.
+**Response (200):** `{ ok, detalle }` con el estado completo incluyendo `historial[]`, `intentosRegistrados[]`, `resultadosPorLogmar`, `timingMs` por turno.
+
+Cada entrada de `historial[]` puede incluir **`llmPrompts`** (si `PIPELINE_GUARDAR_PROMPTS` no es `false`): user prompts enviados a OpenAI por agente en ese turno. No incluye el system prompt (~31 KB por agente). Solo turnos procesados después de activar la feature; no se rellena retroactivamente.
+
+**`llmPrompts` por turno:**
+
+| Campo | Contenido |
+|-------|-----------|
+| `interprete` | `{ invocado, motivo?, user?, vista? }` — en bootstrap: `invocado: false`, `motivo: "bootstrap"` |
+| `protocolo` | `{ intentos: [{ intento, user, vista }] }` — un ítem por pasada (hasta 2 si hubo rechazo del auditor) |
+| `auditor` | `{ intentos: [{ intento, user, vista }] }` — alineado con cada intento de protocolo |
+| `comunicacion` | `{ invocado, motivo?, user?, vista? }` — si fallback por auditoría: `invocado: false` |
+
+Ejemplo (fragmento):
+
+```json
+{
+  "ts": "2026-05-28T17:30:49.598Z",
+  "respuestaPaciente": "veo una h",
+  "propuestaProtocolo": { "evento": "siguiente_optotipo" },
+  "llmPrompts": {
+    "interprete": {
+      "invocado": true,
+      "user": "## Vista del turno (VistaInterprete)\n\n```json\n{ ... }\n```",
+      "vista": { "fase": "agudeza", "modo": "respuesta", "estimulo": { ... } }
+    },
+    "protocolo": {
+      "intentos": [
+        {
+          "intento": 0,
+          "user": "## Vista del turno (VistaProtocolo)\n...",
+          "vista": { "ojoActual": "R", "agudeza": { ... } }
+        }
+      ]
+    },
+    "auditor": { "intentos": [{ "intento": 0, "user": "...", "vista": { ... } }] },
+    "comunicacion": { "invocado": true, "user": "## Vista del turno (VistaComunicacion)\n...", "vista": { ... } }
+  }
+}
+```
+
+**Variable de entorno:** `PIPELINE_GUARDAR_PROMPTS` — default activo; `false` o `0` desactiva persistencia (menor tamaño en memoria).
 
 ---
 
